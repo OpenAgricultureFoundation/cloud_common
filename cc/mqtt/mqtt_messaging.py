@@ -4,12 +4,13 @@
     - Handles messages published by our devices.
 """
 
-import sys, logging, ast, time
+import os, sys, logging, ast, time, tempfile
 from datetime import datetime
 
 from typing import Dict
 
 from cloud_common.cc import utils 
+from cloud_common.cc import images 
 from cloud_common.cc.google import env_vars 
 from cloud_common.cc.google import pubsub # takes 15 secs to load...
 from cloud_common.cc.google import storage 
@@ -353,6 +354,40 @@ class MQTTMessaging:
                     logging.warning(f'save_uploaded_image: '
                         f'image already moved: {file_name}')
                     break
+
+                # use named temporary files to download and resize the image
+                f_split = os.path.splitext(file_name)
+                with tempfile.NamedTemporaryFile(suffix=f_split[1]) \
+                        as downloaded_image_fp:
+
+                    storage.downloadFile(downloaded_image_fp, 
+                            env_vars.cs_bucket, file_name)
+                    f_split = os.path.splitext(file_name)
+
+                    # save a medium sized version of the image
+                    with tempfile.NamedTemporaryFile(suffix=f_split[1]) \
+                            as medium_image_fp:
+
+                        images.resize(downloaded_image_fp.name, 
+                                medium_image_fp.name)
+
+                        med_file_name = f_split[0] + '_medium' + f_split[1]
+                        # halves each dimension by default
+                        storage.uploadFile(medium_image_fp, 
+                                env_vars.cs_bucket, med_file_name)
+
+                    # save a small sized version of the image
+                    downloaded_image_fp.seek(0) # rewind to start of stream
+                    with tempfile.NamedTemporaryFile(suffix=f_split[1]) \
+                            as small_image_fp:
+
+                        images.resize(downloaded_image_fp.name, 
+                                small_image_fp.name,
+                                (128, 128)) # thumbnail size
+
+                        small_file_name = f_split[0] + '_small' + f_split[1]
+                        storage.uploadFile(small_image_fp, 
+                                env_vars.cs_bucket, small_file_name)
 
                 # Put the URL in the datastore for the UI to use.
                 datastore.saveImageURL(deviceId, publicURL, var_name)
