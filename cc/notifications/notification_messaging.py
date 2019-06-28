@@ -18,7 +18,6 @@ from cloud_common.cc.google import env_vars
 from cloud_common.cc.google import pubsub # takes 15 secs to load...
 from cloud_common.cc.notifications.scheduler import Scheduler
 from cloud_common.cc.notifications.runs import Runs
-from cloud_common.cc.notifications.notification_data import NotificationData
 
 class NotificationMessaging:
 
@@ -104,6 +103,9 @@ class NotificationMessaging:
         if message_type == self.recipe_start:
             # New task to check fluids using the default interval hours (48).
             s.add(device_ID, Scheduler.check_fluid_command)
+
+            # New task to prune the plant every 48h (with video)
+            s.add(device_ID, Scheduler.prune_plant_command)
 
             # New task to take plant measurements in 7 days (the first time),
             # then every default interval (48 hours) after that.

@@ -22,12 +22,13 @@ class NotificationData:
     message_key      = "message"
     created_key      = "created"
     acknowledged_key = "acknowledged"
+    URL_key          = "URL"
 
     # DeviceData property
     dd_property = "notifications"
 
     # Notification types for display to user
-    type_OK: str = "OK"   # show an OK button for user to click
+    type_Done: str = "Done"   # show a Done button for user to click
     # other types later, such as Yes/No, Error, Warning, etc
 
     # For logging
@@ -60,7 +61,8 @@ class NotificationData:
     # Add a new notification for this device, set created TS to now().
     # Returns the notification ID string.
     def add(self, device_ID: str, message: str, 
-            notification_type: str = type_OK) -> str:
+            notification_type: str = type_Done,
+            URL: str = None) -> str:
         notification_ID = utils.id_generator()
         now = dt.datetime.utcnow().strftime('%FT%XZ')
 
@@ -71,6 +73,7 @@ class NotificationData:
         notif_dict[self.message_key] = message
         notif_dict[self.created_key] = now
         notif_dict[self.acknowledged_key] = None
+        notif_dict[self.URL_key] = URL
 
         # get the existing list
         notif_list = self.__get_all(device_ID)

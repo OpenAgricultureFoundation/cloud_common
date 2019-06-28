@@ -34,6 +34,7 @@ class Scheduler:
     run_at_key  = 'run_at'
     repeat_key  = 'repeat'
     count_key   = 'count'
+    URL_key     = 'URL'
 
     # DeviceData property
     schedule_property = "schedule"
@@ -42,6 +43,7 @@ class Scheduler:
     check_fluid_command       = 'check_fluid'
     take_measurements_command = 'take_measurements'
     harvest_plant_command     = 'harvest_plant'
+    prune_plant_command       = 'prune_plant'
 
     # Sub keys
     default_repeat_hours_key = 'default_repeat_hours'
@@ -50,13 +52,21 @@ class Scheduler:
     commands = {
         check_fluid_command: 
             {message_key: 'Check your fluid level', 
-             default_repeat_hours_key: 48},
+             default_repeat_hours_key: 48,
+             URL_key: None},
         take_measurements_command: 
             {message_key: 'Record your plant measurements', 
-             default_repeat_hours_key: 24},
+             default_repeat_hours_key: 24,
+             URL_key: None},
         harvest_plant_command: 
             {message_key: 'Time to harvest your plant', 
-             default_repeat_hours_key: 0},
+             default_repeat_hours_key: 0,
+             URL_key: None},
+        prune_plant_command:
+            {message_key: 'Time to prune your plant', 
+             default_repeat_hours_key: 48,
+             URL_key: 'https://www.youtube.com/watch?v=9noUUTuPh3E'},
+#debugrob: replace above with Rebekah's video
     }
 
     # For logging
@@ -143,6 +153,7 @@ class Scheduler:
         cmd_dict[self.run_at_key]  = run_at_time
         cmd_dict[self.repeat_key]  = repeat
         cmd_dict[self.count_key]   = 0
+        cmd_dict[self.URL_key]     = template.get(self.URL_key, '')
 
         # get the list of all command dicts
         sched_list = self.__get_schedule(device_ID)
@@ -177,8 +188,9 @@ class Scheduler:
             return
         template = self.commands.get(command, {})
         cmd_msg = template.get(self.message_key, '')
+        URL = template.get(self.URL_key, '')
         nd = NotificationData()
-        nd.add(device_ID, cmd_msg)
+        nd.add(device_ID, cmd_msg, URL=URL)
 
 
     #--------------------------------------------------------------------------
@@ -257,10 +269,11 @@ class Scheduler:
 
         cmd_name = cmd.get(self.command_key)
         cmd_msg = cmd.get(self.message_key)
+        URL = cmd.get(self.URL_key)
 
         # All our existing commands just create a notification
         nd = NotificationData()
-        nd.add(device_ID, cmd_msg)
+        nd.add(device_ID, cmd_msg, URL=URL)
 
         # For the take measurements command, the first repeat time is a week,
         # then it repeats every default (48) hours.
@@ -300,7 +313,9 @@ class Scheduler:
         sched_list = self.__get_schedule(device_ID)
         for cmd in sched_list:
             cmd_name = cmd.get(self.command_key)
-            logging.debug(f'{self.name}.checking command={cmd_name}')
+            if cmd_name == None:
+                continue
+            logging.debug(f'{self.name}.checking command={cmd}')
             # Has the command run at time passed?
             if now_str >= cmd.get(self.run_at_key):
                 # Yes, so execute it.
