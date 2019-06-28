@@ -1,6 +1,6 @@
 # https://google-cloud-python.readthedocs.io/en/stable/storage/client.html
 
-import logging, time
+import logging, time, tempfile
 from datetime import datetime, timezone
 from google.cloud import storage
 
@@ -97,9 +97,42 @@ def moveFileBetweenBuckets(src_bucket, dest_bucket, file_name):
 
 
 #------------------------------------------------------------------------------
+# Download and save a file to the provided file obj.
+def downloadFile(fp, bucket_name: str, file_name: str) -> bool:
+    try:
+        bucket = storage_client.get_bucket(bucket_name)
+        blob = bucket.get_blob(file_name)
+        if blob is None:
+            logging.error(f'storage.downloadFile file {file_name} ' \
+                    f'not found in bucket {bucket_name}')
+            return False
+        blob.download_to_file(fp)
+        return True
+    except Exception as e:
+        logging.error(f'storage.downloadFile {e}')
+        return False
+
+
+#------------------------------------------------------------------------------
+# Upload a file from the provided file obj.
+# Returns the public URL for success or None for error.
+def uploadFile(fp, bucket_name: str, file_name: str, content_type: str = 'image/png') -> bool:
+    try:
+        bucket = storage_client.get_bucket(bucket_name)
+        blob = bucket.blob(file_name) # make a new blob
+        blob.upload_from_file(fp, rewind=True, content_type=content_type)
+        logging.debug(f'storage.uploadFile {file_name} to {blob.public_url}')
+        return blob.public_url
+    except Exception as e:
+        logging.error(f'storage.uploadFile {e}')
+        return None
+
+
+#------------------------------------------------------------------------------
 # Save the image bytes to a file in cloud storage.
 # The cloud storage bucket we are using allows "allUsers" to read files.
 # Return the public URL to the file in a cloud storage bucket.
+# Note: this is only used by the deprecated code.
 def saveFile(varName, imageType, imageBytes, deviceId ):
 
     bucket = storage_client.get_bucket(env_vars.cs_bucket)
