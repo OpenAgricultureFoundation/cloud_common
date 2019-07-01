@@ -355,39 +355,60 @@ class MQTTMessaging:
                         f'image already moved: {file_name}')
                     break
 
+                #img_in_bucket = storage.isUploadedImageInBucket(file_name, 
+                #        env_vars.cs_bucket)
+                #logging.info(f'save_uploaded_image: {img_in_bucket} '
+                #        f'file {file_name} is in {env_vars.cs_bucket}')
+
                 # use named temporary files to download and resize the image
                 f_split = os.path.splitext(file_name)
                 with tempfile.NamedTemporaryFile(suffix=f_split[1]) \
                         as downloaded_image_fp:
 
-                    storage.downloadFile(downloaded_image_fp, 
+                    downloaded = storage.downloadFile(downloaded_image_fp, 
                             env_vars.cs_bucket, file_name)
-                    f_split = os.path.splitext(file_name)
+                    if not downloaded:
+                        logging.error(f'save_uploaded_image: '
+                                f'image not downloaded: {file_name}')
 
                     # save a medium sized version of the image
+                    downloaded_image_fp.seek(0) # rewind to start of stream
                     with tempfile.NamedTemporaryFile(suffix=f_split[1]) \
-                            as medium_image_fp:
+                            as smaller_image_fp:
 
-                        images.resize(downloaded_image_fp.name, 
-                                medium_image_fp.name)
-
-                        med_file_name = f_split[0] + '_medium' + f_split[1]
                         # halves each dimension by default
-                        storage.uploadFile(medium_image_fp, 
-                                env_vars.cs_bucket, med_file_name)
+                        images.resize(downloaded_image_fp.name, 
+                                smaller_image_fp.name)
+
+                        fn = f_split[0] + '_medium' + f_split[1]
+                        storage.uploadFile(smaller_image_fp, 
+                                env_vars.cs_bucket, fn)
 
                     # save a small sized version of the image
                     downloaded_image_fp.seek(0) # rewind to start of stream
                     with tempfile.NamedTemporaryFile(suffix=f_split[1]) \
-                            as small_image_fp:
+                            as smaller_image_fp:
 
                         images.resize(downloaded_image_fp.name, 
-                                small_image_fp.name,
+                                smaller_image_fp.name,
+                                (640, 480)) # good for ani gif
+
+                        fn = f_split[0] + '_small' + f_split[1]
+                        storage.uploadFile(smaller_image_fp, 
+                                env_vars.cs_bucket, fn)
+
+                    # save a small sized version of the image
+                    downloaded_image_fp.seek(0) # rewind to start of stream
+                    with tempfile.NamedTemporaryFile(suffix=f_split[1]) \
+                            as smaller_image_fp:
+
+                        images.resize(downloaded_image_fp.name, 
+                                smaller_image_fp.name,
                                 (128, 128)) # thumbnail size
 
-                        small_file_name = f_split[0] + '_small' + f_split[1]
-                        storage.uploadFile(small_image_fp, 
-                                env_vars.cs_bucket, small_file_name)
+                        fn = f_split[0] + '_thumbnail' + f_split[1]
+                        storage.uploadFile(smaller_image_fp, 
+                                env_vars.cs_bucket, fn)
 
                 # Put the URL in the datastore for the UI to use.
                 datastore.saveImageURL(deviceId, publicURL, var_name)
