@@ -720,6 +720,32 @@ def saveImageURL(deviceId, publicURL, cameraName):
     return 
 
 
+#------------------------------------------------------------------------------
+def get_device_name(device_uuid):
+    DS = get_client()
+    if DS is None:
+        return 
+    query = DS.query(kind='Devices')
+    query.add_filter('device_uuid', '=', device_uuid)
+    results = list(query.fetch())
+    if len(results) > 0:
+        return results[0]["device_name"]
+    else:
+        return "Invalid device"
+
+#------------------------------------------------------------------------------
+# Returns None for not found or version never set, otherwise a string version.
+def get_device_software_version(device_uuid):
+    DS = get_client()
+    if DS is None:
+        return 
+    query = DS.query(kind='Devices')
+    query.add_filter('device_uuid', '=', device_uuid)
+    results = list(query.fetch())
+    if len(results) == 0:
+        return None
+    return results[0].get("device_software_version", None)
+
 
 
 
