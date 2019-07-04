@@ -519,6 +519,24 @@ def add_user_to_DS(username, email_address, organization):
 
 
 #------------------------------------------------------------------------------
+# Update a user's profile.
+def update_user(user_uuid, username, email_address, organization):
+    try:
+        DS = get_client()
+        query = DS.query(kind='Users')
+        query.add_filter('user_uuid', '=', user_uuid)
+        user = list(query.fetch(1))[0]
+        # 'testman@mailinator.com'
+        user['email_address'] = email_address
+        user['username']      = username
+        user['organization']  = organization
+        DS.put(user)
+        return True
+    except:
+        return False
+
+
+#------------------------------------------------------------------------------
 # Delete a device_uuid from the Devices and DeviceData entity collections.
 # Returns True.
 def delete_device_from_DS(device_uuid):
