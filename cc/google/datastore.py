@@ -584,14 +584,15 @@ def add_device_to_DS(device_name, device_notes):
 
 
 #------------------------------------------------------------------------------
-# Get the DeviceData property list of dicts.
+# Get the entity property list of dicts.
 # Returns a list of dicts.
-def get_device_data_property(device_ID: str, property_name: str) -> List[Dict[str, str]]:
-    if device_ID is None or device_ID is 'None' or \
+def get_entity_property(entity_kind: str, entity_key: str, 
+        property_name: str) -> List[Dict[str, str]]:
+    if entity_key is None or entity_key is 'None' or \
             property_name is None or property_name is 'None':
         return [{}]
 
-    dd = get_by_key_from_DS(DS_device_data_KIND, device_ID)
+    dd = get_by_key_from_DS(entity_kind, entity_key)
     if dd is None:
         return [{}]
 
@@ -599,18 +600,26 @@ def get_device_data_property(device_ID: str, property_name: str) -> List[Dict[st
 
 
 #------------------------------------------------------------------------------
-# Save a bounded list of the recent values of each env. var. to the Device
-# that produced them - for UI display / charting.
-def push_dict_onto_device_data_queue(device_ID: str, 
+# Get the DeviceData property list of dicts.
+# Returns a list of dicts.
+def get_device_data_property(device_ID: str, 
+        property_name: str) -> List[Dict[str, str]]:
+    return get_entity_property(DS_device_data_KIND, device_ID, property_name)
+
+
+#------------------------------------------------------------------------------
+# Save a bounded list of data to the entity by key and property.
+# A cache for UI display / charting.
+def push_dict_onto_entity_queue(entity_kind: str, entity_key: str, 
         property_name: str, pydict: Dict) -> bool:
     try:
         DS = get_client()
         if DS is None:
             return False
 
-        # Get this device data from the datastore (or create an empty one).
-        # These DeviceData entities are custom keyed with our device_ID.
-        ddkey = DS.key(DS_device_data_KIND, device_ID)
+        # Get this entity from the datastore (or create an empty one).
+        # These entities are custom keyed with an entity_key.
+        ddkey = DS.key(entity_kind, entity_key)
         dd = DS.get(ddkey) 
         if not dd: 
             # The device data entity doesn't exist, so create it
@@ -648,20 +657,30 @@ def push_dict_onto_device_data_queue(device_ID: str,
                 #        '{}'.format( e ))
                 continue
         if not transactionWorked:
-            logging.error(f'push_dict_onto_device_data_queue: '
-                    f'transaction failed '
-                    f'for device_ID={device_ID} name={property_name}')
+            logging.error(f'push_dict_onto_entity_queue: '
+                    f'transaction failed for entity={entity_kind} '
+                    f'entity_key={entity_key} name={property_name}')
             return False
 
-        logging.debug(f'push_dict_onto_device_data_queue: saved '
-                f'device_ID={device_ID} name={property_name} dict={pydict}')
+        logging.debug(f'push_dict_onto_entity_queue: saved '
+                f'entity={entity_kind} entity_key={entity_key} '
+                f'name={property_name} dict={pydict}')
         return True
 
     except Exception as e:
         exc_type, exc_value, exc_traceback = sys.exc_info()
-        logging.critical( "Exception in save_data_to_Device(): %s" % e)
+        logging.critical( "Exception in push_dict_onto_entity_queue(): %s" % e)
         traceback.print_tb( exc_traceback, file=sys.stdout )
         return False
+
+
+#------------------------------------------------------------------------------
+# Save a bounded list of the recent values of each env. var. to the Device
+# that produced them - for UI display / charting.
+def push_dict_onto_device_data_queue(device_ID: str, 
+        property_name: str, pydict: Dict) -> bool:
+    return push_dict_onto_entity_queue(DS_device_data_KIND, device_ID, 
+            property_name, pydict)
 
 
 #------------------------------------------------------------------------------

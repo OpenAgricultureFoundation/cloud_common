@@ -18,5 +18,9 @@ bq_table = os.getenv('BQ_TABLE')
 cs_bucket = os.getenv('CS_BUCKET')
 cs_upload_bucket = os.getenv('CS_UPLOAD_BUCKET')
 
-
+ds_weather_entity = os.getenv('DS_WEATHER_ENTITY')
+arable_email = os.getenv('ARABLE_EMAIL')
+arable_password = os.getenv('ARABLE_PASSWORD')
+arable_tenant = os.getenv('ARABLE_TENANT')
+arable_device_ids = os.getenv('ARABLE_DEVICE_IDS')
 

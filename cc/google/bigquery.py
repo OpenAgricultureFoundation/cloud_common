@@ -53,15 +53,15 @@ def get_temp_and_humidity_history_from_BQ(device_uuid):
 # Insert data into our bigquery dataset and table.
 def data_insert(rowsList):
     try:
-        logging.info( "bq insert rows: {}".format(rowsList))
+        logging.info("bq insert rows: {}".format(rowsList))
 
-        dataset_ref = bigquery_client.dataset( env_vars.bq_dataset, 
-                project=env_vars.cloud_project_id )
-        table_ref = dataset_ref.table( env_vars.bq_table )
-        table = bigquery_client.get_table( table_ref )               
+        dataset_ref = bigquery_client.dataset(env_vars.bq_dataset, 
+                project=env_vars.cloud_project_id)
+        table_ref = dataset_ref.table(env_vars.bq_table)
+        table = bigquery_client.get_table(table_ref )               
 
-        response = bigquery_client.insert_rows( table, rowsList)
-        logging.debug( 'bq response: {}'.format( response ))
+        response = bigquery_client.insert_rows(table, rowsList)
+        logging.debug('bq response: {}'.format(response ))
 
         return True
 
