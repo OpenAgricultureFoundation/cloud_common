@@ -1,14 +1,7 @@
-# All common database code.  From BigQuery and Datastore.
-
-from queries import queries
+# All common database code.  
 
 from cloud_common.cc import utils 
-from cloud_common.cc.google import env_vars 
 from cloud_common.cc.google import datastore
-from cloud_common.cc.google import bigquery
-
-# NOTE: The XX_from_BQ() methods are only used if there is no data found
-# in the Datastore.   
 
 
 # ------------------------------------------------------------------------------
@@ -18,21 +11,18 @@ def get_co2_history(device_uuid):
     if device_uuid is None or device_uuid is 'None':
         return []
 
-    # First, try to get the data from the datastore...
-    device_data = get_by_key_from_DS(DS_device_data_KEY, device_uuid)
-    if device_data is None or DS_co2_KEY not in device_data:
-        # If we didn't find any data in the DS, look in BQ...
-        return get_co2_history_from_BQ(device_uuid)
+    device_data = datastore.get_by_key_from_DS(
+            datastore.DS_device_data_KIND, device_uuid)
+    if device_data is None or datastore.DS_co2_KEY not in device_data:
+        return []
 
-    # process the vars list from the DS into the same format as BQ
     results = []
-    valuesList = device_data[DS_co2_KEY]
+    valuesList = device_data[datastore.DS_co2_KEY]
     for val in valuesList:
         ts = utils.bytes_to_string(val['timestamp'])
         value = utils.bytes_to_string(val['value'])
         results.append({'value': value, 'time': ts})
     return results
-
 
 
 # ------------------------------------------------------------------------------
@@ -42,13 +32,11 @@ def get_led_panel_history(device_uuid):
     if device_uuid is None or device_uuid is 'None':
         return []
 
-    # First, try to get the data from the datastore...
-    device_data = get_by_key_from_DS(DS_device_data_KEY, device_uuid)
+    device_data = datastore.get_by_key_from_DS(
+            datastore.DS_device_data_KIND, device_uuid)
     if device_data is None or DS_led_KEY not in device_data:
-        # If we didn't find any data in the DS, look in BQ...
-        return get_led_panel_history_from_BQ(device_uuid)
+        return []
 
-    # process the vars list from the DS into the same format as BQ
     results = []
     valuesList = device_data[DS_led_KEY]
     for val in valuesList:
@@ -70,27 +58,24 @@ def get_temp_and_humidity_history(device_uuid):
     if device_uuid is None or device_uuid is 'None':
         return result_json
 
-        # First, try to get the data from the datastore...
-    device_data = get_by_key_from_DS(DS_device_data_KEY, device_uuid)
+    device_data = datastore.get_by_key_from_DS(
+            datastore.DS_device_data_KIND, device_uuid)
     if device_data is None or \
-            (DS_temp_KEY not in device_data and \
-                         DS_rh_KEY not in device_data):
-        # If we didn't find any data in the DS, look in BQ...
-        return get_temp_and_humidity_history_from_BQ(device_uuid)
-
-    # process the vars list from the DS into the same format as BQ
+            (datastore.DS_temp_KEY not in device_data and \
+             datastore.DS_rh_KEY not in device_data):
+        return result_json
 
     # Get temp values
-    if DS_temp_KEY in device_data:
-        valuesList = device_data[DS_temp_KEY]
+    if datastore.DS_temp_KEY in device_data:
+        valuesList = device_data[datastore.DS_temp_KEY]
         for val in valuesList:
             ts = utils.bytes_to_string(val['timestamp'])
             value = utils.bytes_to_string(val['value'])
             result_json["temp"].append({'value': value, 'time': ts})
 
     # Get RH values
-    if DS_rh_KEY in device_data:
-        valuesList = device_data[DS_rh_KEY]
+    if datastore.DS_rh_KEY in device_data:
+        valuesList = device_data[datastore.DS_rh_KEY]
         for val in valuesList:
             ts = utils.bytes_to_string(val['timestamp'])
             value = utils.bytes_to_string(val['value'])
@@ -105,7 +90,8 @@ def get_current_float_value_from_DS(key, device_uuid):
     if device_uuid is None or device_uuid is 'None':
         return None
 
-    device_data = get_by_key_from_DS(DS_device_data_KEY, device_uuid)
+    device_data = datastore.get_by_key_from_DS(
+            datastore.DS_device_data_KIND, device_uuid)
     if device_data is None or key not in device_data:
         return None
 
@@ -121,39 +107,29 @@ def get_current_float_value_from_DS(key, device_uuid):
 # Get the current CO2 value for this device.  
 # Returns a float or None.
 def get_current_CO2_value(device_uuid):
-    # First: look in the Datastore Device data dict...
-    result = get_current_float_value_from_DS(DS_co2_KEY, device_uuid)
-    if result is not None:
-        return result
-
-    # Second: do a big (slow) query
-    return get_current_float_value_from_BQ(
-        queries.fetch_current_co2_value, device_uuid)
+    return get_current_float_value_from_DS(datastore.DS_co2_KEY, device_uuid)
 
 
 # ------------------------------------------------------------------------------
 # Get the current temp value for this device.
 # Returns a float or None.
 def get_current_temp_value(device_uuid):
-    # First: look in the Datastore Device data dict...
-    result = get_current_float_value_from_DS(DS_temp_KEY, device_uuid)
-    if result is not None:
-        return result
-
-    # Second: do a big (slow) query
-    return get_current_float_value_from_BQ(
-        queries.fetch_current_temperature_value, device_uuid)
+    return get_current_float_value_from_DS(datastore.DS_temp_KEY, device_uuid)
 
 
 # ------------------------------------------------------------------------------
 # Get the current RH value for this device.
 # Returns a float or None.
 def get_current_RH_value(device_uuid):
-    # First: look in the Datastore Device data dict...
-    result = get_current_float_value_from_DS(DS_rh_KEY, device_uuid)
-    if result is not None:
-        return result
+    return get_current_float_value_from_DS(datastore.DS_rh_KEY, device_uuid)
 
-    # Second: do a big (slow) query
-    return get_current_float_value_from_BQ(
-        queries.fetch_current_RH_value, device_uuid)
+def get_current_EC_value(device_uuid):
+    return get_current_float_value_from_DS(datastore.DS_h20_ec_KEY, device_uuid)
+
+def get_current_pH_value(device_uuid):
+    return get_current_float_value_from_DS(datastore.DS_h20_ph_KEY, device_uuid)
+
+def get_current_h2o_temp_value(device_uuid):
+    return get_current_float_value_from_DS(datastore.DS_h20_temp_KEY, device_uuid)
+
+
