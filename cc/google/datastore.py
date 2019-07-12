@@ -611,7 +611,8 @@ def get_device_data_property(device_ID: str,
 # Save a bounded list of data to the entity by key and property.
 # A cache for UI display / charting.
 def push_dict_onto_entity_queue(entity_kind: str, entity_key: str, 
-        property_name: str, pydict: Dict) -> bool:
+        property_name: str, pydict: Dict, 
+        max_list_size: int = DS_env_vars_MAX_size) -> bool:
     try:
         DS = get_client()
         if DS is None:
@@ -641,7 +642,7 @@ def push_dict_onto_entity_queue(entity_kind: str, entity_key: str,
                     # put this value at the front of the list
                     valuesList.insert(0, pydict)
                     # cap max size of list
-                    while len(valuesList) > DS_env_vars_MAX_size:
+                    while len(valuesList) > max_list_size:
                         valuesList.pop() # remove last item in list
 
                     # update the entity
