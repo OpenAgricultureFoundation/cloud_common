@@ -1,7 +1,7 @@
 # https://google-cloud-python.readthedocs.io/en/stable/datastore/usage.html
 
 import datetime as dt
-import uuid, json, logging, time
+import uuid, json, logging, time, sys
 from typing import Any, List, Dict
 
 from google.cloud import datastore
@@ -141,6 +141,7 @@ def get_all_from_DS(kind, key, value):
 
 
 #------------------------------------------------------------------------------
+# Return the entity indexed by our custom key (usually the device ID).
 def get_by_key_from_DS(kind, key):
     DS = get_client()
     if DS is None:
@@ -150,6 +151,36 @@ def get_by_key_from_DS(kind, key):
     if not _ent: 
         return None
     return _ent
+
+
+#------------------------------------------------------------------------------
+# Save a custom keyed entity.  
+# Returns True / False.
+def save_with_key(kind: str, key: str, data: str) -> bool:
+    try:
+        DS = get_client()
+        if DS is None:
+            return False
+
+        # Get this device data from the datastore (or create an empty one).
+        # These DeviceData entities are custom keyed with our device_ID.
+        ddkey = DS.key(kind, key)
+        dd = DS.get(ddkey) 
+        if not dd: 
+            # The entity doesn't exist, so create it (no transaction needed)
+            dd = datastore.Entity(ddkey)
+            dd.update({}) 
+        dd[key] = data
+        DS.put(dd)
+
+        logging.info(f'save_with_key: kind={kind} key={key} data={data}')
+        return True
+
+    except Exception as e:
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        logging.critical(f'Exception in save_with_key(): {e}')
+        traceback.print_tb( exc_traceback, file=sys.stdout )
+        return False
 
 
 #------------------------------------------------------------------------------
