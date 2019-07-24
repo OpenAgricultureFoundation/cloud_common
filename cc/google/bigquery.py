@@ -3,7 +3,7 @@
 # BigQuery is SLOW.  Only use it for research queries and warn the user.
 # Note: most data from the device is cached in the datastore.
 
-import ast, logging
+import ast, logging, json
 from google.cloud import bigquery
 
 from cloud_common.cc.google import env_vars
@@ -67,6 +67,27 @@ def data_insert(rowsList):
 
     except Exception as e:
         logging.critical( "bigquery.data_insert: Exception: %s" % e )
+        return False
+
+
+#--------------------------------------------------------------------------
+# Save the data to BQ.  
+# Inserts a new row with an ID made up from the first three arguments: 
+#   <data_type>~<device_name>~<timestamp>
+def save(data_type: str, device_name: str, timestamp: str, data: dict) -> bool:
+    try:
+        if data_type is None or device_name is None or data is None:
+            logging.error(f'bigquery.save: invalid args.')
+            return False
+        data_type = data_type.replace( '~', '' ) 
+        device_name = device_name.replace( '~', '' ) 
+        ID = data_type + '~' + device_name + '~' + timestamp
+        rowsList = []
+        rowsList.append((ID, json.dumps(data)))
+        data_insert(rowsList)
+        return True
+    except Exception as e:
+        logging.error(f'bigquery.save: {e}')
         return False
 
 

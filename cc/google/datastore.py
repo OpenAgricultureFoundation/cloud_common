@@ -154,6 +154,22 @@ def get_by_key_from_DS(kind, key):
 
 
 #------------------------------------------------------------------------------
+# Return a list of the entity keys for the specified kind.
+# Useful when you custom key the entity with a device ID.
+def get_keys(kind) -> List[str]:
+    DS = get_client()
+    if DS is None:
+        return []
+    query = DS.query(kind=kind)
+    query.keys_only() # retuns less data, so faster
+    entities = list(query.fetch()) # get all entities (keys only)
+    keys = []
+    for ent in entities:
+        keys.append(ent.key.id_or_name)
+    return keys
+
+
+#------------------------------------------------------------------------------
 # Save a custom keyed entity.  
 # Returns True / False.
 def save_with_key(kind: str, key: str, data: str) -> bool:
