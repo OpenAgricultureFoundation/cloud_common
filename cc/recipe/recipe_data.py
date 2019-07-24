@@ -75,7 +75,7 @@ class RecipeData:
 
 
     #--------------------------------------------------------------------------
-    # Private save to datastore.
+    # Private cache to datastore.
     # Returns True for success, False for error.
     def __save_DS(self, data: dict) -> bool:
         try:

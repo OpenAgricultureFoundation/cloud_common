@@ -80,4 +80,110 @@ class WeatherData:
         return computed_data_list # return the data 
 
 
-#debugrob: add data writing methods from the weather_service.data_storage class
+    #--------------------------------------------------------------------------
+    # Private cache to datastore.
+    # Returns True for success, False for error.
+    def __save_DS(self, data_type: str, device_name: str, 
+            max_list_size: int, data: dict) -> bool:
+        try:
+            if data_type is None or device_name is None or data is None:
+                logging.error(f'{self.__name} __save_DS: invalid args.')
+                return False
+            datastore.push_dict_onto_entity_queue(
+                    self.__kind,        # Weather entity
+                    device_name,        # device key
+                    data_type,          # property name
+                    json.dumps(data),   # data to save
+                    max_list_size=max_list_size)
+            return True
+        except Exception as e:
+            logging.error(f'{self.__name} __save_DS: {e}')
+            return False
+
+
+    #--------------------------------------------------------------------------
+    # Save an arable device to BQ and DS.
+    # Returns True for success, False for error.
+    def save_device(self, timestamp: str, device_dict: dict) -> bool:
+        try:
+            name = device_dict.get('name')
+            if timestamp is None or name is None or 0 == len(device_dict):
+                logging.error(f'{self.__name} save_device: invalid args')
+                return False
+
+            if not self.bigquery.save('device', name, timestamp, device_dict):
+                logging.error(f'{self.__name} save_device: BQ save failed.')
+                return False
+
+            if not self.__save_DS('device', name, 100, device_dict):
+                logging.error(f'{self.__name} save_device: DS save failed.')
+                return False
+
+            return True
+        except Exception as e:
+            logging.error(f'save_device: {e}')
+            return False
+
+
+    #--------------------------------------------------------------------------
+    # Save raw 5 min data to BQ.
+    # Returns True for success, False for error.
+    def save_raw_five_min(self, timestamp: str, name: str, data: dict) -> bool:
+        try:
+            if timestamp is None or name is None or 0 == len(data):
+                logging.error(f'{self.__name} save_raw_five_min: invalid args')
+                return False
+
+            if not self.bigquery.save('raw_five_min', name, timestamp, data):
+                logging.error(f'{self.__name} save_raw_five_min: BQ save failed.')
+                return False
+
+            # don't bother saving raw data to DS
+            return True
+        except Exception as e:
+            logging.error(f'save_raw_five_min: {e}')
+            return False
+
+
+    #--------------------------------------------------------------------------
+    # Save raw aux data to BQ.
+    # Returns True for success, False for error.
+    def save_raw_aux(self, timestamp: str, name: str, data: dict) -> bool:
+        try:
+            if timestamp is None or name is None or 0 == len(data):
+                logging.error(f'{self.__name} save_raw_aux: invalid args')
+                return False
+
+            if not self.bigquery.save('raw_aux', name, timestamp, data):
+                logging.error(f'{self.__name} save_raw_aux: BQ save failed.')
+                return False
+
+            # don't bother saving raw data to DS
+            return True
+        except Exception as e:
+            logging.error(f'save_raw_aux: {e}')
+            return False
+
+
+    #--------------------------------------------------------------------------
+    # Save a computed data to BQ and DS.
+    # Returns True for success, False for error.
+    def save_computed(self, timestamp: str, name: str, data: dict) -> bool:
+        try:
+            if timestamp is None or name is None or 0 == len(data):
+                logging.error(f'{self.__name} save_computed: invalid args')
+                return False
+
+            if not self.bigquery.save('computed', name, timestamp, data):
+                logging.error(f'{self.__name} save_computed: BQ save failed.')
+                return False
+
+            if not self.__save_DS('computed', name, 2500, data):
+                logging.error(f'{self.__name} save_device: DS save failed.')
+                return False
+
+            return True
+        except Exception as e:
+            logging.error(f'save_computed: {e}')
+            return False
+
