@@ -6,8 +6,8 @@
     - Stores recipes in bigquery for historical tracking.
 """
 
-from datetime import datetime as dt
-import os, json, logging, uuid
+from datetime import datetime as dt, timedelta
+import os, json, logging, uuid, pprint, io
 
 from typing import List, Dict
 
@@ -97,7 +97,17 @@ class RecipeData:
             recipe_name: str, 
             weather_data: List[Dict],
             times_to_repeat_last_day_in_recipe: int,
-            days_length_in_recipe: int) -> str:
+            days_length_in_recipe: int,
+            light_distance_cm: int,
+            compress_time: bool) -> str:
+
+        if 0 >= len(weather_data):
+            logging.error(f'{self.__name} create_recipe: no weather data.')
+
+        if compress_time: 
+            logging.warning(f'{self.__name} create_recipe: COMPRESSING time '
+                    'in generated recipe.  The data recorded over an hour '
+                    'will run in one minute in real time')
 
         template_recipe_dict = {
             "format": "openag-phased-environment-v1",
@@ -118,206 +128,110 @@ class RecipeData:
             "phases": [],
         }
 
-#debugrob:  fill in environments and phases + cycles from weather data
-
-#debugrob: cycles times are fractional hours!
-#              "duration_hours": 0.001},  # will quickly flip to day/night/...
-
-#debugrob: below is just a hack.
-        template_recipe_dict["environments"] = {
-    "standard_day": {
-        "name": "Standard Day", 
-        "light_spectrum_nm_percent": {
+        # Use this for now, until we calibrate the LGHC COB and make an
+        # LED peripheral setup with the spectrum mappings for it.
+        PFC_sun_spectrum = {
             "380-399": 2.03, 
             "400-499": 20.3,
             "500-599": 23.27, 
             "600-700": 31.09, 
-            "701-780": 23.31}, 
-        "light_ppfd_umol_m2_s": 300, 
-        "light_illumination_distance_cm": 10, 
-        "air_temperature_celsius": 22},
-    "standard_night": {
-        "name": "Standard Night", 
-        "light_spectrum_nm_percent": {
-            "380-399": 0.0, 
-            "400-499": 0.0, 
-            "500-599": 0.0,
-            "600-700": 0.0, 
-            "701-780": 0.0}, 
-        "light_ppfd_umol_m2_s": 0,
-        "light_illumination_distance_cm": 10, 
-        "air_temperature_celsius": 22},
+            "701-780": 23.31
         }
 
-        template_recipe_dict["phases"] = [
-        {"name": "Standard Growth", 
-         "repeat": 29, 
-         "cycles": [
-            {"name": "Day", 
-             "environment": "standard_day", 
-              "duration_hours": 0.001}, 
-            {"name": "Night", 
-             "environment": "standard_night", 
-              "duration_hours": 0.001}
-            ]
-        }
-        ]
+        # Iterate the weather data:
+        logging.info(f'YYYY-MM-DD_HH:MM Temp   RH     PAR ')
+        last_date = ''
+        last_ts = None
+        phase = {}
+        # Iterate in date order (earliest to latest), this required looping
+        # through the data array in reverse order.
+        for i in range(len(weather_data) - 1, -1, -1): # start, end, step
+            w = weather_data[i]
+            ts = dt.strptime(w['time'], '%Y-%m-%dT%H:%M:%SZ')
 
+            # If this is the first row / time, then just save the ts.
+            if last_ts is None:
+                last_ts = ts
+                continue 
+
+            # Name we will use for the enviroment and cycle
+            date = f'{str(ts.date())}'
+            name = f'{date}_{ts.hour:02}:{ts.minute:02}'
+
+            temp = w['air_temp_degrees_C']
+            RH = w['air_RH_percent']
+            PAR = w['light_PAR_uE_m2_s']
+            logging.info(f'{name} {ts.minute:02} '
+                    f'{temp:4.2f} {RH:6.2f} {PAR:7.2f} ')
+
+            # Add a named environment 
+            template_recipe_dict["environments"][name] = {
+                "name": name,
+                "light_spectrum_nm_percent": PFC_sun_spectrum,
+                "light_ppfd_umol_m2_s": PAR, 
+                "light_illumination_distance_cm": light_distance_cm, 
+                "air_temperature_celsius": temp,
+                "air_humidity_percent": RH
+            }
+
+            # Add a new phase for every new calendar day.
+            if last_date < date:
+                last_date = date
+                phase = {
+                    "name": date,
+                    "repeat": 1,   # this phase is one day long
+                    "cycles": []   # filled in by next block of code
+                }
+                template_recipe_dict["phases"].append(phase)
+
+            # Calculate how long it has been since the last interval to 
+            # determine how long to run the cycle.  Float value can be 
+            # < 1.0 for a partial hour.
+            ts_delta = ts - last_ts
+            last_ts = ts
+            duration_hours = ts_delta.total_seconds() / 3600 # secs -> hours
+            if 0 == ts_delta.total_seconds():
+                continue # ignore duplicate HH:MM values
+
+            # When TESTING, Rob is impatient, so we can compress time by 
+            # making every hour equivalent to one minute.
+            # (the smallest cycle the brain can handle is one minute)
+            if compress_time: 
+                duration_hours /= 60 
+                if duration_hours < (1/60): # no less than 1/60 of an hour
+                    duration_hours = (1/60) # one minute
+
+            # Add one cycle to the daily phase for each time interval 
+            # in that day.
+            phase["cycles"].append({
+                "name": name,        # just for human display
+                "environment": name, # match the environment name (from above)
+                "duration_hours": duration_hours
+            })
+            # end of looping over dates.
+
+        # Repeat the last phase N times. 
+        # (phase == day, repeat for insurance in case system has issues
+        # getting more data)
+        phase["repeat"] = times_to_repeat_last_day_in_recipe
+
+        '''
+        # For debugging, comment out for production
+        recipe_file = 'recipe.raw' # to make sure date ordering is correct
+        with open(recipe_file, 'w') as f:
+            f.write(json.dumps(template_recipe_dict))
+        recipe_file = 'recipe.json'
+        with open(recipe_file, 'w') as f: # print dict to file
+            pp = pprint.PrettyPrinter(stream=f) # pretty print SORTs keys!
+            pp.pprint(template_recipe_dict)
+        stream = io.StringIO(open(recipe_file).read().replace('\'', '"'))
+        with open(recipe_file, 'w') as f:   # make it real JSON ' -> "
+            f.write(stream.getvalue())
+        logging.info(f'{self.__name} wrote {recipe_file}')
+        '''
+
+        # return the JSON recipe 
         return json.dumps(template_recipe_dict)
 
-#debugrob: string dumped from datastore Recipes, and it works.
-#        return '{"format": "openag-phased-environment-v1", "version": "0.1.2", "creation_timestamp_utc": "2018-07-19T16:54:24:44Z", "name": "Rob is hacking", "uuid": "abdcebe7-d496-43cc-8bd3-3a40a79e854e", "parent_recipe_uuid": null, "support_recipe_uuids": null, "description": {"brief": "Grows basil.", "verbose": "Grows basil."}, "authors": [{"name": "OpenAgTest", "uuid": "1e91ef7d-e9c2-4b0d-8904-f262a9eda70d", "email": "rp492@cornell.edu"}], "cultivars": [{"name": "Basil/Sweet Basil", "uuid": "02b0328f-ff19-44a8-a8b8-cd13cf6b80af"}], "cultivation_methods": [{"name": "Shallow Water Culture", "uuid": "45fa509b-2008-4109-a39e-e5682c421925"}], "environments": { "standard_day": { "name": "Standard Day", "light_spectrum_nm_percent": { "380-399": 2.03, "400-499": 20.3, "500-599": 23.27, "600-700": 31.09, "701-780": 23.31}, "light_ppfd_umol_m2_s": 300, "light_illumination_distance_cm": 10, "air_temperature_celsius": 22}, "standard_night": { "name": "Standard Night", "light_spectrum_nm_percent": { "380-399": 0.0, "400-499": 0.0, "500-599": 0.0, "600-700": 0.0, "701-780": 0.0}, "light_ppfd_umol_m2_s": 0, "light_illumination_distance_cm": 10, "air_temperature_celsius": 22} }, "phases": [ {"name": "Standard Growth", "repeat": 29, "cycles": [ {"name": "Day", "environment": "standard_day", "duration_hours": 18}, {"name": "Night", "environment": "standard_night", "duration_hours": 6} ] } ] } '
 
-'''
-#debugrob: this is the RecipeSchema in DS, key by format string:
-{
-	"type": "object",
-	"properties": {
-		"format": {
-			"type": "string",
-			"enum": ["openag-phased-environment-v1"]
-		},
-		"version": {"type": "string"},
-		"creation_timestamp_utc": {"type": "string"},
-		"name": {"type": "string"},
-		"uuid": {"type": "string"},
-		"parent_recipe_uuid": {"type": ["string", "null"]},
-		"support_recipe_uuids": {"type": "null"},
-		"description": {
-			"type": "object",
-			"parameters": {
-				"brief": {"type": "string"},
-				"verbose": {"type": "string"}
-			},
-			"required": ["brief", "verbose"]
-		},
-		"authors": {
-			"type": "array",
-			"items": {
-				"type": "object",
-				"parameters": {
-					"name": {"type": "string"},
-					"email": {"type": ["string", "null"]},
-					"uuid": {"type": "string"}
-				},
-				"required": ["name", "email", "uuid"]
-			}
-		},
-		"cultivars": {
-			"type": "array",
-			"items": {
-				"type": "object",
-				"parameters": {
-					"name": {"type": "string"},
-					"uuid": {"type": "string"}
-				},
-				"required": ["name", "uuid"]
-			}
-		},
-		"cultivation_methods": {
-			"type": "array",
-			"items": {
-				"type": "object",
-				"parameters": {
-					"name": {"type": "string"},
-					"uuid": {"type": "string"}
-				},
-				"required": ["name", "uuid"]
-			}
-		},
-		"environments": {"type": "object"},
-		"phases": {
-			"type": "array",
-			"items": {
-				"type": "object",
-				"parameters": {
-					"name": {"type": "string"},
-					"repeat": {"type": "string"},
-					"cycles": {
-						"type": "array",
-						"parameters": {
-							"name": {"type": "string"},
-							"environment": {"type": "string"},
-							"duration_hours": {"type": "integer"}
-						},
-						"required": ["name", "environment", "duration_hours"]
-					}
-				},
-				"required": ["name", "repeat", "cycles"]
-			}
-		}
-	},
-	"required": [
-		"format", 
-		"version", 
-		"creation_timestamp_utc",
-		"name",
-		"uuid",
-		"parent_recipe_uuid",
-		"support_recipe_uuids",
-		"description",
-		"authors",
-		"cultivars",
-		"cultivation_methods",
-		"environments",
-		"phases"
-	]
-}
-    
-#debugrob: this is our get growing v4 recipe in DS:
-{"format": "openag-phased-environment-v1", 
-"version": "0.1.2",
-"creation_timestamp_utc": "2018-07-19T16:54:24:44Z", 
-"name": "Get Growing - Basil Recipe", 
-"uuid": "e6085be7-d496-43cc-8bd3-3a40a79e854e",
-"parent_recipe_uuid": "37dc0177-076a-4903-8557-c7586e42e90e",
-"support_recipe_uuids": null, 
-"description": {"brief": "Grows basil.",
-                "verbose": "Grows basil."}, 
-"authors": [{"name": "OpenAgTest", 
-             "uuid": "1e91ef7d-e9c2-4b0d-8904-f262a9eda70d", 
-             "email": "rp492@cornell.edu"}],
-"cultivars": [{"name": "Basil/Sweet Basil", 
-               "uuid": "02b0328f-ff19-44a8-a8b8-cd13cf6b80af"}], 
-"cultivation_methods": [{"name": "Shallow Water Culture", 
-                         "uuid": "45fa509b-2008-4109-a39e-e5682c421925"}],
-"environments": {
-    "standard_day": {
-        "name": "Standard Day", 
-        "light_spectrum_nm_percent": {
-            "380-399": 2.03, 
-            "400-499": 20.3,
-            "500-599": 23.27, 
-            "600-700": 31.09, 
-            "701-780": 23.31}, 
-        "light_ppfd_umol_m2_s": 300, 
-        "light_illumination_distance_cm": 10, 
-        "air_temperature_celsius": 22},
-    "standard_night": {
-        "name": "Standard Night", 
-        "light_spectrum_nm_percent": {
-            "380-399": 0.0, 
-            "400-499": 0.0, 
-            "500-599": 0.0,
-            "600-700": 0.0, 
-            "701-780": 0.0}, 
-        "light_ppfd_umol_m2_s": 0,
-        "light_illumination_distance_cm": 10, 
-        "air_temperature_celsius": 22},
-},
-"phases": [
-        {"name": "Standard Growth", 
-         "repeat": 29, 
-         "cycles": [
-            {"name": "Day", 
-             "environment": "standard_day", 
-              "duration_hours": 18}, 
-            {"name": "Night", 
-             "environment": "standard_night", 
-              "duration_hours": 6}
-            ]
-        }
-    ]
-}
-'''
 
