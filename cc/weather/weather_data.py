@@ -126,6 +126,19 @@ class WeatherData:
 
 
     #--------------------------------------------------------------------------
+    # Return the details about an arable device.
+    # Use get_arable_devices() to get the list of device keys.
+    def get_device_details(self, device_key: str) -> Dict:
+        details = datastore.get_entity_property(
+                self.__kind,        # Weather entity
+                device_key,         # key
+                'device')           # property name
+        if 0 == len(details):
+            return {}
+        return json.loads(details[0]) # return the first (latest) dict
+
+
+    #--------------------------------------------------------------------------
     # Save raw 5 min data to BQ.
     # Returns True for success, False for error.
     def save_raw_five_min(self, timestamp: str, name: str, data: dict) -> bool:
