@@ -1,7 +1,93 @@
 # All common database code.  
 
+from datetime import datetime as dt
+
 from cloud_common.cc import utils 
 from cloud_common.cc.google import datastore
+
+
+# ------------------------------------------------------------------------------
+# Get the historical Temp, Humidity, CO2, leaf count, plant height values as
+# time series in a date range for this device.  
+# Returns 5 lists of dicts: temp, RH, co2, leaf_count, plant_height
+def get_all_historical_values(device_uuid, start_timestamp, end_timestamp):
+    co2 = [] 
+    temp = [] 
+    RH = [] 
+    leaf_count = [] 
+    plant_height = []
+
+    if device_uuid is None or device_uuid is 'None':
+        print(f'get_all_historical_values: No device_uuid')
+        return temp, RH, co2, leaf_count, plant_height
+
+    device_data = datastore.get_by_key_from_DS(
+            datastore.DS_device_data_KIND, device_uuid)
+    if device_data is None:
+        print(f'get_all_historical_values: No DeviceData for {device_uuid}')
+        return temp, RH, co2, leaf_count, plant_height
+
+    # handle None values for date range, in which case we return all 
+    start, end = None, None
+    try:
+        start = dt.strptime(start_timestamp, '%Y-%m-%dT%H:%M:%SZ')
+        end = dt.strptime(end_timestamp, '%Y-%m-%dT%H:%M:%SZ')
+        print(f'get_all_historical_values: using date range: {str(start)} to {str(end)}')
+    except:
+        start, end = None, None
+        print(f'get_all_historical_values: no date range')
+
+    # make sure the time column is the first entry in each dict
+    if datastore.DS_co2_KEY in device_data:
+        valuesList = device_data[datastore.DS_co2_KEY]
+        for val in valuesList:
+            ts_str = utils.bytes_to_string(val['timestamp'])
+            ts = dt.strptime(ts_str, '%Y-%m-%dT%H:%M:%SZ')
+            if start is not None and end is not None and \
+                    (ts < start or ts > end):
+                continue    # this value is not in our start / end range
+            value = utils.bytes_to_string(val['value'])
+            co2.append({'time': ts_str, 'value': value})
+
+    if datastore.DS_temp_KEY in device_data:
+        valuesList = device_data[datastore.DS_temp_KEY]
+        for val in valuesList:
+            ts_str = utils.bytes_to_string(val['timestamp'])
+            ts = dt.strptime(ts_str, '%Y-%m-%dT%H:%M:%SZ')
+            if start is not None and end is not None and \
+                    (ts < start or ts > end):
+                continue    # this value is not in our start / end range
+            value = utils.bytes_to_string(val['value'])
+            temp.append({'time': ts_str, 'value': value})
+
+    if datastore.DS_rh_KEY in device_data:
+        valuesList = device_data[datastore.DS_rh_KEY]
+        for val in valuesList:
+            ts_str = utils.bytes_to_string(val['timestamp'])
+            ts = dt.strptime(ts_str, '%Y-%m-%dT%H:%M:%SZ')
+            if start is not None and end is not None and \
+                    (ts < start or ts > end):
+                continue    # this value is not in our start / end range
+            value = utils.bytes_to_string(val['value'])
+            RH.append({'time': ts_str, 'value': value})
+
+    # get horticulture measurements: leaf_count, plant_height
+    query = datastore.get_client().query(kind='DailyHorticultureLog')
+    query.add_filter('device_uuid', '=', device_uuid)
+    query_result = list(query.fetch())
+    if 0 < len(query_result):
+        for result in query_result:
+            ts_str = utils.bytes_to_string(result["submitted_at"])
+            ts = dt.strptime(ts_str, '%Y-%m-%dT%H:%M:%SZ')
+            if start is not None and end is not None and \
+                    (ts < start or ts > end):
+                continue    # this value is not in our start / end range
+            leaf_count.append({'time': ts_str, 
+                'value': result["leaf_count"]})
+            plant_height.append({'time': ts_str, 
+                'value': result["plant_height"]})
+
+    return temp, RH, co2, leaf_count, plant_height
 
 
 # ------------------------------------------------------------------------------
