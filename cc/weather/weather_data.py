@@ -111,7 +111,7 @@ class WeatherData:
                 logging.error(f'{self.__name} save_device: invalid args')
                 return False
 
-            if not self.bigquery.save('device', name, timestamp, device_dict):
+            if not bigquery.save('device', name, timestamp, device_dict):
                 logging.error(f'{self.__name} save_device: BQ save failed.')
                 return False
 
@@ -147,7 +147,7 @@ class WeatherData:
                 logging.error(f'{self.__name} save_raw_five_min: invalid args')
                 return False
 
-            if not self.bigquery.save('raw_five_min', name, timestamp, data):
+            if not bigquery.save('raw_five_min', name, timestamp, data):
                 logging.error(f'{self.__name} save_raw_five_min: BQ save failed.')
                 return False
 
@@ -167,7 +167,7 @@ class WeatherData:
                 logging.error(f'{self.__name} save_raw_aux: invalid args')
                 return False
 
-            if not self.bigquery.save('raw_aux', name, timestamp, data):
+            if not bigquery.save('raw_aux', name, timestamp, data):
                 logging.error(f'{self.__name} save_raw_aux: BQ save failed.')
                 return False
 
@@ -187,7 +187,7 @@ class WeatherData:
                 logging.error(f'{self.__name} save_computed: invalid args')
                 return False
 
-            if not self.bigquery.save('computed', name, timestamp, data):
+            if not bigquery.save('computed', name, timestamp, data):
                 logging.error(f'{self.__name} save_computed: BQ save failed.')
                 return False
 
