@@ -8,6 +8,7 @@ from google.oauth2 import service_account
 from googleapiclient import discovery, errors
 
 from cloud_common.cc.google import env_vars
+from cloud_common.cc.google.firebase import fs_client
 
 
 # ------------------------------------------------------------------------------
@@ -203,7 +204,7 @@ def create_iot_device_registry_entry(verification_code, device_name,
                                      device_notes, device_type, user_uuid):
     # get a firestore DB collection of the RSA public keys uploaded by
     # a setup script on the device:
-    keys_ref = fb_client.collection(u'devicePublicKeys')
+    keys_ref = fs_client.collection(u'devicePublicKeys')
 
     # docs = keys_ref.get()  # get all docs
     # for doc in docs:
