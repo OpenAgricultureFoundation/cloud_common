@@ -192,7 +192,7 @@ class WeatherData:
                 return False
 
             if not self.__save_DS('computed', name, 2500, data):
-                logging.error(f'{self.__name} save_device: DS save failed.')
+                logging.error(f'{self.__name} save_computed: DS save failed.')
                 return False
 
             return True
