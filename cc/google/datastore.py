@@ -35,6 +35,7 @@ DS_status_KEY = 'status'
 DS_h20_ec_KEY = 'water_electrical_conductivity_ms_cm'
 DS_h20_ph_KEY = 'water_potential_hydrogen'
 DS_h20_temp_KEY = 'water_temperature_celcius'
+DS_runs_KEY = 'runs'
 
 
 # How many entries are in the DeviceData queue of dicts.
