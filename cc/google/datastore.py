@@ -39,7 +39,8 @@ DS_runs_KEY = 'runs'
 
 
 # How many entries are in the DeviceData queue of dicts.
-DS_env_vars_MAX_size = 100 # maximum number of values in each env. var list
+DS_env_vars_MAX_size = 100000 # maximum number of values in each env. var list
+# srmoore wants to test 100K entries Aug. 14, 2019.
 
 
 # Global
