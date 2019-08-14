@@ -77,7 +77,7 @@ def get_all_historical_values(device_uuid, start_timestamp, end_timestamp):
     query_result = list(query.fetch())
     if 0 < len(query_result):
         for result in query_result:
-            ts_str = utils.bytes_to_string(result["submitted_at"])
+            ts_str = str(utils.bytes_to_string(result["submitted_at"]))
             ts = dt.strptime(ts_str, '%Y-%m-%dT%H:%M:%SZ')
             if start is not None and end is not None and \
                     (ts < start or ts > end):
