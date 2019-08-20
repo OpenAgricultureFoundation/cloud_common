@@ -283,6 +283,24 @@ def get_list_of_users_from_DS():
 
 
 #------------------------------------------------------------------------------
+# just the basics: name, notes. device_uuid
+def get_list_of_basic_device_info():
+    res = []
+    DS = get_client()
+    if DS is None:
+        return res
+    query = DS.query(kind=DS_devices_KIND)
+    devices = list(query.fetch()) # get all devices 
+    for d in devices:
+        device = {}
+        device['device_name'] = d.get('device_name', '')
+        device['device_notes'] = d.get('device_notes', '')
+        device['device_uuid'] = d.get('device_uuid', '')
+        res.append(device)
+    return res
+
+#------------------------------------------------------------------------------
+# all the details on each device (sort of slow)
 def get_list_of_devices_from_DS():
     res = {}
     DS = get_client()
