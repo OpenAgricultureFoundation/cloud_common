@@ -16,7 +16,7 @@ from cloud_common.cc.google import datastore
 
 
 """
-Store runs in datastore.DeviceData<device_ID>.runs as a list of dicts:
+Store runs in datastore.DeviceData_runs_<device_ID> as a list of dicts:
 queue of the most recent 100 runs per device
 {
     start: str <timestamp in UTC>,
@@ -33,7 +33,7 @@ class Runs:
     recipe_key = 'recipe_name'
 
     # DeviceData property
-    runs_property = "runs"
+    runs_property = datastore.DS_runs_KEY
 
     # For logging
     name: str = 'cloud_common.cc.notifications.runs'
@@ -60,8 +60,7 @@ class Runs:
     #     start may be None if a recipe has never been run.
     #     end may be None if the run is in progress.
     def get_all(self, device_ID: str) -> List[Dict[str, str]]:
-        return datastore.get_device_data_property(device_ID, 
-                self.runs_property)
+        return datastore.get_device_data(self.runs_property, device_ID)
 
 
     #--------------------------------------------------------------------------
@@ -83,9 +82,7 @@ class Runs:
                self.end_key:    None,
                self.recipe_key: recipe_name
         }
-        # Store in datastore.DeviceData<device_ID>.runs as a list of dicts:
-        datastore.push_dict_onto_device_data_queue(device_ID, 
-                self.runs_property, run)
+        datastore.save_device_data(device_ID, self.runs_property, run)
 
 
     #--------------------------------------------------------------------------
@@ -106,8 +103,7 @@ class Runs:
         all_runs_list[0] = run
 
         # put back in datastore
-        datastore.save_list_as_device_data_queue(device_ID, 
-                self.runs_property, all_runs_list)
+        datastore.save_device_data(device_ID, self.runs_property, all_runs_list)
         logging.debug(f'{self.name}.stop-ped run {run}')
 
 

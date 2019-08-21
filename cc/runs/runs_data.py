@@ -9,7 +9,6 @@ import os, json, logging
 
 from typing import Dict, List
 
-from cloud_common.cc.google import env_vars 
 from cloud_common.cc.google import datastore
 
 class RunsData:
@@ -24,7 +23,6 @@ class RunsData:
     #     "end":"2019-08-09T16:53:29Z",
     #     "start":"2019-08-09T16:52:46Z"}
     def get_runs(self, device_ID) -> List[Dict[str, str]]:
-        return datastore.get_device_data_property(device_ID, 
-                datastore.DS_runs_KEY)
+        return datastore.get_device_data(datastore.DS_runs_KEY, device_ID)
 
 

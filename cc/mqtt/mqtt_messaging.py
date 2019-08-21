@@ -224,6 +224,7 @@ class MQTTMessaging:
         try:
             if self.messageType_EnvVar != self.get_message_type(pydict) and \
             self.messageType_CommandReply != self.get_message_type(pydict):
+                logging.debug(f"save_data_to_Device: invalid message type {self.get_message_type(pydict)}")
                 return
 
             # each received EnvVar type message must have these fields
@@ -240,8 +241,7 @@ class MQTTMessaging:
                 'name': str( name ),
                 'value': str( value ) }
 
-            datastore.push_dict_onto_device_data_queue(deviceId,
-                    varName, valueToSave)
+            datastore.save_device_data(deviceId, varName, valueToSave)
 
         except Exception as e:
             logging.critical(f"Exception in save_data_to_Device(): {e}")

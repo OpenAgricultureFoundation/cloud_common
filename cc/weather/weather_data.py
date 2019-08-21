@@ -48,12 +48,9 @@ class WeatherData:
     def get_computed_weather_data(self, 
             start_date: str, end_date: str, 
             arable_device_name: str) -> List[Dict]:
-        # The datastore should have a cache of about 2500 of the last data
-        # points from each device (assuming it has been collected by our
-        # weather service and the device works).
-        entity = datastore.get_by_key_from_DS(self.__kind, 
-                arable_device_name) # Weather entity is keyed by device name.
-        all_data_list = entity['computed'] # get the computed property
+        # The datastore caches all data points from each device 
+        rows = datastore.get_sharded_entity(self.__kind, 'computed',
+                arable_device_name) 
         # Create a list of dates in the range requested
         start = dt.strptime(start_date, '%Y-%m-%d')
         end = dt.strptime(end_date, '%Y-%m-%d')
@@ -64,12 +61,12 @@ class WeatherData:
             start += step
         # Filter the data for the date range requested
         computed_data_list = []
-        for json_str in all_data_list:
-            d = json.loads(json_str)
-            ts = d['time']
+        for row in rows:
+            data = row.get(datastore.DS_DeviceData_data_Property, {})
+            ts = data.get('time', '')
             date = ts[0:10] # first 10 chars of the timestamp is date
             if date in dates:
-                computed_data_list.append(d)
+                computed_data_list.append(data)
         # Remove duplicate timestamps
         previous_ts = None
         for d in computed_data_list:
@@ -81,20 +78,34 @@ class WeatherData:
 
 
     #--------------------------------------------------------------------------
-    # Private cache to datastore.
+    # Private cache to datastore.  Sharded for performance.
     # Returns True for success, False for error.
-    def __save_DS(self, data_type: str, device_name: str, 
-            max_list_size: int, data: dict) -> bool:
+    def __save_DS(self, data_type: str, device_name: str, data: dict) -> bool:
         try:
             if data_type is None or device_name is None or data is None:
                 logging.error(f'{self.__name} __save_DS: invalid args.')
                 return False
-            datastore.push_dict_onto_entity_queue(
+            datastore.save_dict_to_entity(  # sharded for performance
                     self.__kind,        # Weather entity
                     device_name,        # device key
                     data_type,          # property name
-                    json.dumps(data),   # data to save
-                    max_list_size=max_list_size)
+                    json.dumps(data))   # data to save
+            return True
+        except Exception as e:
+            logging.error(f'{self.__name} __save_DS: {e}')
+            return False
+
+    #--------------------------------------------------------------------------
+    # NOT sharded.  Just for devices
+    def __save_device_to_DS(self, data_type: str, device_name: str, data: dict) -> bool:
+        try:
+            if data_type is None or device_name is None or data is None:
+                logging.error(f'{self.__name} __save_DS: invalid args.')
+                return False
+            datastore.save_with_key(
+                    self.__kind,        # Weather entity
+                    device_name,        # device key
+                    json.dumps(data))   # data to save
             return True
         except Exception as e:
             logging.error(f'{self.__name} __save_DS: {e}')
@@ -115,7 +126,7 @@ class WeatherData:
                 logging.error(f'{self.__name} save_device: BQ save failed.')
                 return False
 
-            if not self.__save_DS('device', name, 100, device_dict):
+            if not self.__save_device_to_DS('device', name, device_dict):
                 logging.error(f'{self.__name} save_device: DS save failed.')
                 return False
 
@@ -129,13 +140,13 @@ class WeatherData:
     # Return the details about an arable device.
     # Use get_arable_devices() to get the list of device keys.
     def get_device_details(self, device_key: str) -> Dict:
-        details = datastore.get_entity_property(
-                self.__kind,        # Weather entity
-                device_key,         # key
-                'device')           # property name
+        details = datastore.get_sharded_entity(self.__kind, 'device', 
+                device_key, count=1)
         if 0 == len(details):
             return {}
-        return json.loads(details[0]) # return the first (latest) dict
+        details = details[0]
+        details = details.get(datastore.DS_DeviceData_data_Property, {})
+        return details # return the first (latest) dict
 
 
     #--------------------------------------------------------------------------
@@ -191,7 +202,7 @@ class WeatherData:
                 logging.error(f'{self.__name} save_computed: BQ save failed.')
                 return False
 
-            if not self.__save_DS('computed', name, 2500, data):
+            if not self.__save_DS('computed', name, data):
                 logging.error(f'{self.__name} save_computed: DS save failed.')
                 return False
 

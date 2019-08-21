@@ -17,7 +17,7 @@ from cloud_common.cc.notifications.notification_data import NotificationData
 
 
 """
-Store schedule in datastore.DeviceData<device_ID>.schedule as a dict:
+Store schedule in datastore.DeviceData_schedule_<device_ID> as a dict:
 {
     command: str <command>,
     message: str <message to display>,
@@ -37,7 +37,7 @@ class Scheduler:
     URL_key     = 'URL'
 
     # DeviceData property
-    schedule_property = "schedule"
+    schedule_property = datastore.DS_schedule_KEY
 
     # Commands
     check_fluid_command       = 'check_fluid'
@@ -90,8 +90,7 @@ class Scheduler:
     # Private getter of the schedule property.
     # Returns a list of dicts.
     def __get_schedule(self, device_ID: str) -> List[Dict[str, str]]:
-        return datastore.get_device_data_property(device_ID, 
-                self.schedule_property)
+        return datastore.get_device_data(self.schedule_property, device_ID)
 
 
     #--------------------------------------------------------------------------
@@ -173,8 +172,7 @@ class Scheduler:
             else:
                 sched_list.append(cmd_dict)      # no, so append it
 
-        # Store in datastore.DeviceData<device_ID>.schedule as a list of dicts:
-        datastore.save_list_as_device_data_queue(device_ID, 
+        datastore.save_device_data(device_ID, 
                 self.schedule_property, sched_list)
         logging.debug(f'{self.name}.add-ed to list: {sched_list}')
 
@@ -209,8 +207,7 @@ class Scheduler:
                 new_list.append(cmd)
 
         # save the new list over the old one.
-        datastore.save_list_as_device_data_queue(device_ID, 
-            self.schedule_property, new_list)
+        datastore.save_device_data(device_ID, self.schedule_property, new_list)
         logging.debug(f'{self.name}.remove_command {command} from list: {new_list}')
 
 
@@ -218,8 +215,7 @@ class Scheduler:
     # Removes all commands for this device.
     def remove_all_commands(self, device_ID: str) -> None:
         # save an empty list
-        datastore.save_list_as_device_data_queue(device_ID, 
-                self.schedule_property, [])
+        datastore.save_device_data(device_ID, self.schedule_property, [])
         logging.debug(f'{self.name}.remove_all_commands from list.')
 
 
@@ -247,7 +243,7 @@ class Scheduler:
                 sched_list[i] = command_dict
 
                 # save the new list over the old one.
-                datastore.save_list_as_device_data_queue(device_ID, 
+                datastore.save_device_data(device_ID, 
                     self.schedule_property, sched_list)
                 break
         logging.debug(f'{self.name}.replace_command '

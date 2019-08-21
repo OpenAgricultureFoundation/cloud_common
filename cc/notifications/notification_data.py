@@ -25,7 +25,7 @@ class NotificationData:
     URL_key          = "URL"
 
     # DeviceData property
-    dd_property = "notifications"
+    dd_property = datastore.DS_notifications_KEY
 
     # Notification types for display to user
     type_Done: str = "Done"   # show a Done button for user to click
@@ -44,8 +44,7 @@ class NotificationData:
     # private internal method
     # Get the list of all notifications for this device ID.
     def __get_all(self, device_ID: str) -> List[Dict[str, str]]:
-        return datastore.get_device_data_property(device_ID, 
-                self.dd_property)
+        return datastore.get_device_data(self.dd_property, device_ID)
 
 
     #--------------------------------------------------------------------------
@@ -83,8 +82,7 @@ class NotificationData:
             notif_list.append(notif_dict) # append the new dict
 
         # save the list to the datastore
-        datastore.save_list_as_device_data_queue(device_ID, 
-                self.dd_property, notif_list)
+        datastore.save_device_data(device_ID, self.dd_property, notif_list)
 
         return notification_ID
 
@@ -110,8 +108,8 @@ class NotificationData:
                 now = dt.datetime.utcnow().strftime('%FT%XZ')
                 n[self.acknowledged_key] = now
                 # save list back to DS
-                datastore.save_list_as_device_data_queue(device_ID, 
-                    self.dd_property, notif_list)
+                datastore.save_device_data(device_ID, self.dd_property, 
+                        notif_list)
                 break
 
 
