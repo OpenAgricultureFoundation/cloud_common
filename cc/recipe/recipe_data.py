@@ -43,11 +43,13 @@ class RecipeData:
     # (for historical change tracking). 
     def write_config(self, config: dict) -> None:
         now = dt.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        config['timestamp'] = now
+        ret = self.__save_DS(config)
+        print(f'debugrob: write_config {config}')
         bigquery.save('recipe_generator_config', 
                 config['devices_to_control'][0], # use first device in list
                 now, config)
-        config['timestamp'] = now
-        return self.__save_DS(config)
+        return ret
 
 
     #--------------------------------------------------------------------------
