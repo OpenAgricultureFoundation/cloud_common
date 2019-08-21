@@ -21,7 +21,6 @@ class NotificationData:
     type_key         = "type"
     message_key      = "message"
     created_key      = "created"
-    acknowledged_key = "acknowledged"
     URL_key          = "URL"
 
     # DeviceData property
@@ -71,18 +70,10 @@ class NotificationData:
         notif_dict[self.type_key] = notification_type
         notif_dict[self.message_key] = message
         notif_dict[self.created_key] = now
-        notif_dict[self.acknowledged_key] = None
         notif_dict[self.URL_key] = URL
 
-        # get the existing list
-        notif_list = self.__get_all(device_ID)
-        if 1 == len(notif_list) and 0 == len(notif_list[0]):
-            notif_list[0] = notif_dict # overwrite empty first dict
-        else:
-            notif_list.append(notif_dict) # append the new dict
-
-        # save the list to the datastore
-        datastore.save_device_data(device_ID, self.dd_property, notif_list)
+        # save the dict to the datastore
+        datastore.save_device_data(device_ID, self.dd_property, notif_dict)
 
         return notification_ID
 
@@ -90,27 +81,24 @@ class NotificationData:
     #--------------------------------------------------------------------------
     # Returns a list of unacknowledged notifications dicts.
     def get_unacknowledged(self, device_ID: str) -> List[Dict[str, str]]:
-        unack_list = []
-        notif_list = self.__get_all(device_ID)
-        for n in notif_list:
-            if n.get(self.acknowledged_key) is None: # not ackd
-                unack_list.append(n)
-        return unack_list 
+        # every notification that we have is by definition 'un acknowledged'.
+        return self.__get_all(device_ID)
 
 
     #--------------------------------------------------------------------------
-    # Find notification by ID and update the acknowledged timestamp to now().
+    # Find notification by ID and delete it, to ack it.
     def ack(self, device_ID: str, notification_ID: str) -> None:
-        notif_list = self.__get_all(device_ID)
-        for n in notif_list:
-            if n.get(self.ID_key) == notification_ID:
-                # update ack to now
-                now = dt.datetime.utcnow().strftime('%FT%XZ')
-                n[self.acknowledged_key] = now
-                # save list back to DS
-                datastore.save_device_data(device_ID, self.dd_property, 
-                        notif_list)
+        entities = datastore.get_sharded_entities(
+                datastore.DS_device_data_KIND, 
+                self.dd_property, device_ID)
+        for e in entities:
+            data = e.get(datastore.DS_DeviceData_data_Property, {})
+            if data.get(self.ID_key) == notification_ID:
+                # delete this entity (as a form of acknowledging it and 
+                # keeping the list of notifications from growing without 
+                # bounds).
+                DS = datastore.get_client()
+                DS.delete(key=e.key)
                 break
-
 
 

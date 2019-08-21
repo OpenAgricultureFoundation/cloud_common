@@ -1,5 +1,6 @@
 # https://google-cloud-python.readthedocs.io/en/stable/datastore/usage.html
 
+import traceback
 import datetime as dt
 import uuid, json, logging, time, sys
 from typing import Any, List, Dict
@@ -132,21 +133,29 @@ def get_all_from_DS(kind, key, value):
 
 
 #------------------------------------------------------------------------------
-# Return count rows of data for this property and device key.
+# Return count rows of (complete) ENTITIES for this property and device key.
 # Count can be None to get all rows.
-def get_sharded_entity(kind: str, property_name: str, device_key: str, 
+def get_sharded_entities(kind: str, property_name: str, device_key: str, 
         count: int = None):
     DS = get_client()
     if DS is None:
-        return None
+        return []
     kind = get_sharded_kind(kind, property_name, device_key)
     # Sort by timestamp descending
     query = DS.query(kind=kind, 
                      order=['-' + DS_DeviceData_timestamp_Property])
-    result = list(query.fetch(limit=count)) # get count number of rows
+    return list(query.fetch(limit=count)) # get count number of rows
+
+
+#------------------------------------------------------------------------------
+# Return count rows of DATA for this property and device key.
+# Count can be None to get all rows.
+def get_sharded_entity(kind: str, property_name: str, device_key: str, 
+        count: int = None):
+    entities = get_sharded_entities(kind, property_name, device_key, count)
     ret = []
-    for r in result:
-        data = r.get(DS_DeviceData_data_Property, {})
+    for e in entities:
+        data = e.get(DS_DeviceData_data_Property, {})
         ret.append(data)
     return ret
 
@@ -239,13 +248,13 @@ def get_device_data_from_DS(device_uuid):
         return None
 
     temp = get_device_data(DS_temp_KEY, device_uuid, count=1)
-    if temp is None:
+    if 0 == len(temp):
         return None
     temp = temp[0]
     air_temperature_celcius = temp.get("value", '')
 
     status = get_device_data(DS_status_KEY, device_uuid, count=1)
-    if status is None:
+    if 0 == len(status):
         return None
     status = status[0]
 
@@ -355,7 +364,7 @@ def get_list_of_devices_from_DS():
         device['access_point'] = ''
         if 0 < len(device_uuid):
             dd = get_device_data(DS_boot_KEY, device_uuid, count=1)
-            if dd is not None and 0 < len(dd):
+            if 0 < len(dd):
                 boot = dd[0]
 
                 # get latest boot message
@@ -411,13 +420,13 @@ def get_list_of_device_data_from_DS():
                 device['user_name'] = user.get('username','None')
 
         # Get the DeviceData for this device ID
-        dd = None
+        dd = []
         if 0 < len(device_uuid):
             dd = get_device_data(DS_boot_KEY, device_uuid, count=1)
         
         device['remote_URL'] = ''
         device['access_point'] = ''
-        if dd is not None and 0 < len(dd):
+        if 0 < len(dd):
             boot = dd[0]
 
             # get latest boot message
@@ -639,7 +648,7 @@ def delete_device_from_DS(device_uuid):
     # TODO do below for ALL properties
     '''
     dd = get_device_data(DS_temp_KEY, device_uuid)
-    if dd is not None:
+    if 0 < len(dd):
         for d in dd:
             DS.delete(key=dd.key)
     '''

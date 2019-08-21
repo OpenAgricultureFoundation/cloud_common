@@ -70,12 +70,11 @@ class Runs:
     #     start may be None if a recipe has never been run.
     #     end may be None if the run is in progress.
     def get_latest(self, device_ID: str) -> Dict[ str, str ]:
-        return self.get_all(device_ID)[0] # return top of the list
+        return datastore.get_device_data(self.runs_property, device_ID, count=1)
 
 
     #--------------------------------------------------------------------------
     # Start a new run for this device.
-    # Push onto the queue:
     #   { start: now(), end: None, recipe_name: recipe_name }
     def start(self, device_ID: str, recipe_name: str) -> None:
         run = {self.start_key:  dt.datetime.utcnow().strftime('%FT%XZ'),
@@ -90,21 +89,23 @@ class Runs:
     # has end == None, end is set to now().
     #   { start: TS, end: now() }
     def stop(self, device_ID: str) -> None:
-        run = self.get_latest(device_ID)
-        if run is None or run == {}:
+        # have to get the datastore entity to update it.
+        entities = datastore.get_sharded_entities(
+                datastore.DS_device_data_KIND, 
+                self.runs_property, device_ID, count=1)
+        if 0 == len(entities):
             logging.error(f'{self.name}.stop no current run for {device_ID}')
             return
+
+        e = entities[0] # only one entity in the list
+        # get this entities data property and update it
+        run = e.get(datastore.DS_DeviceData_data_Property, {})
         run[self.end_key] = dt.datetime.utcnow().strftime('%FT%XZ')
 
-        # get the list of all runs for this device
-        all_runs_list = self.get_all(device_ID)
-
-        # overwrite the top of the list (latest) run
-        all_runs_list[0] = run
-
-        # put back in datastore
-        datastore.save_device_data(device_ID, self.runs_property, all_runs_list)
-        logging.debug(f'{self.name}.stop-ped run {run}')
+        # put entity back in datastore
+        DS = datastore.get_client()
+        DS.put(e)
+        logging.debug(f'{self.name}.stopped run {run}')
 
 
 

@@ -27,7 +27,7 @@ def get_all_historical_values(device_uuid, start_timestamp, end_timestamp):
             count=1000)
     rh_vals = datastore.get_device_data(datastore.DS_rh_KEY, device_uuid, 
             count=1000)
-    if co2_vals is None or temp_vals is None or rh_vals is None:
+    if 0 == len(co2_vals) or 0 == len(temp_vals) or 0 == len(rh_vals):
         print(f'get_all_historical_values: No DeviceData for {device_uuid}')
         return temp, RH, co2, leaf_count, plant_height
 
@@ -97,7 +97,7 @@ def get_co2_history(device_uuid):
 
     co2_vals = datastore.get_device_data(datastore.DS_co2_KEY, device_uuid, 
             count=1000)
-    if co2_vals is None:
+    if 0 == len(co2_vals):
         return []
 
     results = []
@@ -117,7 +117,7 @@ def get_led_panel_history(device_uuid):
 
     led_vals = datastore.get_device_data(datastore.DS_led_KEY, device_uuid, 
             count=1000)
-    if led_vals is None:
+    if 0 == len(led_vals):
         return []
 
     results = []
@@ -144,7 +144,7 @@ def get_temp_and_humidity_history(device_uuid):
             count=1000)
     rh_vals = datastore.get_device_data(datastore.DS_rh_KEY, device_uuid, 
             count=1000)
-    if temp_vals is None or rh_vals is None:
+    if 0 == len(temp_vals) or 0 == len(rh_vals):
         return result_json
 
     for val in temp_vals:
@@ -164,14 +164,14 @@ def get_temp_and_humidity_history(device_uuid):
 # Generic function to return a float value from DeviceData[key]
 def get_current_float_value_from_DS(key, device_uuid):
     if device_uuid is None or device_uuid is 'None':
-        return None
+        return ''
 
     vals = datastore.get_device_data(key, device_uuid, count=1)
-    if vals is None:
-        return None
+    if 0 == len(vals):
+        return ''
 
     # process the vars list from the DS into the same format as BQ
-    result = None
+    result = ''
     val = vals[0]  # the first item in the list is most recent
     result = "{0:.2f}".format(float(val['value']))
     return result

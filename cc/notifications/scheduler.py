@@ -66,7 +66,7 @@ class Scheduler:
             {message_key: 'Time to prune your plant', 
              default_repeat_hours_key: 48,
              URL_key: 'https://www.youtube.com/watch?v=9noUUTuPh3E'},
-#debugrob: replace above with Rebekah's video
+#TODO: replace above with Rebekah's video
     }
 
     # For logging
@@ -111,18 +111,25 @@ class Scheduler:
 
 
     #--------------------------------------------------------------------------
-    # Get a command by device ID and command name.
-    # Returns the command dict if found, or an empty dict for not found.
-    def get_command_dict(self, device_ID: str, command: str) -> Dict[str, str]:
+    # Get an entity by device ID and command name.
+    # Returns the entity if found, or None
+    def get_command_entity(self, device_ID: str, command: str) -> Dict[str, str]:
         if not self.__validate_command(command):
-            logging.error(f'{self.name}.get_command_dict '
+            logging.error(f'{self.name}.get_command_entity '
                     f'invalid command {command}')
-            return {}
-        sched_list = self.__get_schedule(device_ID)
-        for cmd_dict in sched_list:
+            return None
+        # get list of all entities by time
+        entities = datastore.get_sharded_entities(
+                datastore.DS_device_data_KIND, 
+                self.schedule_property, device_ID)
+        if 0 == len(entities):
+            return None
+        for e in entities:
+            # get this entities data property 
+            cmd_dict = e.get(datastore.DS_DeviceData_data_Property, {})
             if cmd_dict.get(self.command_key) == command:
-                return cmd_dict
-        return {}
+                return e
+        return None
 
 
     #--------------------------------------------------------------------------
@@ -143,10 +150,8 @@ class Scheduler:
         utc_in_repeat_hours = dt.datetime.utcnow() + dt.timedelta(hours=repeat)
         run_at_time = utc_in_repeat_hours.strftime('%FT%XZ')
 
-        # get any existing dict for this command (or an empty dict)
-        cmd_dict = self.get_command_dict(device_ID, command)
-
-        # fill in the command properties
+        # create a new command
+        cmd_dict = {}
         cmd_dict[self.command_key] = command
         cmd_dict[self.message_key] = template.get(self.message_key, '')
         cmd_dict[self.run_at_key]  = run_at_time
@@ -154,27 +159,12 @@ class Scheduler:
         cmd_dict[self.count_key]   = 0
         cmd_dict[self.URL_key]     = template.get(self.URL_key, '')
 
-        # get the list of all command dicts
-        sched_list = self.__get_schedule(device_ID)
+        # update this command dict (remove and add)
+        self.update_command(device_ID, cmd_dict)
 
-        # check for an empty first element (happens with a new DS entity)
-        if 1 == len(sched_list) and 0 == len(sched_list[0]):
-            sched_list[0] = cmd_dict # overwrite empty first dict
-        else:
-            # see if this command already exists in the list
-            cmd_index = -1
-            for i in range(len(sched_list)):
-                if sched_list[i].get(self.command_key) == command:
-                    cmd_index = i
-                    break
-            if cmd_index >= 0:
-                sched_list[cmd_index] = cmd_dict # yes, so replace it
-            else:
-                sched_list.append(cmd_dict)      # no, so append it
-
-        datastore.save_device_data(device_ID, 
-                self.schedule_property, sched_list)
-        logging.debug(f'{self.name}.add-ed to list: {sched_list}')
+        # save the command as a new entity
+        datastore.save_device_data(device_ID, self.schedule_property, cmd_dict)
+        logging.debug(f'{self.name}.added command to schedule: {cmd_dict}')
 
 
     #--------------------------------------------------------------------------
@@ -192,62 +182,45 @@ class Scheduler:
 
 
     #--------------------------------------------------------------------------
-    # Remove a command for this device, from the list.
+    # Remove a command entity for this device.
     def remove_command(self, device_ID: str, command: str) -> None:
-        new_list = []
-
-        # get the list of all command dicts
-        sched_list = self.__get_schedule(device_ID)
-
-        # iterate the list
-        for cmd in sched_list:
-            # if this command is NOT the one we want to remove
-            if cmd.get(self.command_key) != command:
-                # add it to a new list 
-                new_list.append(cmd)
-
-        # save the new list over the old one.
-        datastore.save_device_data(device_ID, self.schedule_property, new_list)
-        logging.debug(f'{self.name}.remove_command {command} from list: {new_list}')
+        # get any existing entity for this command and delete it.
+        entity = self.get_command_entity(device_ID, command)
+        if entity is not None:
+            # delete this entity
+            DS = datastore.get_client()
+            DS.delete(key=entity.key)
+        logging.debug(f'{self.name}.remove_command {command}')
 
 
     #--------------------------------------------------------------------------
     # Removes all commands for this device.
     def remove_all_commands(self, device_ID: str) -> None:
-        # save an empty list
-        datastore.save_device_data(device_ID, self.schedule_property, [])
-        logging.debug(f'{self.name}.remove_all_commands from list.')
+        # get list of all entities by time
+        entities = datastore.get_sharded_entities(
+                datastore.DS_device_data_KIND, 
+                self.schedule_property, device_ID)
+        if 0 == len(entities):
+            return None
+        DS = datastore.get_client()
+        for e in entities:
+            DS.delete(key=e.key)
+        logging.debug(f'{self.name}.remove_all_commands done.')
 
 
     #--------------------------------------------------------------------------
     # Replaces a command in the list.  
     # If the command isn't already in the list, nothing changes.
-    def replace_command(self, device_ID: str, 
-                        command_dict: Dict[str, str]) -> None:
-        cmd_name = command_dict.get(self.command_key, None)
-
+    def update_command(self, device_ID: str, cmd_dict: Dict[str, str]) -> None:
+        cmd_name = cmd_dict.get(self.command_key, None)
         if not self.__validate_command(cmd_name):
-            logging.error(f'{self.name}.replace_command invalid {cmd_name}')
+            logging.error(f'{self.name}.update_command invalid {cmd_name}')
             return
-
-        # get the list of all command dicts
-        sched_list = self.__get_schedule(device_ID)
-
-        # iterate the list
-        for i in range(len(sched_list)):
-            cmd = sched_list[i]
-            # if this command IS the one we want to replace
-            if cmd.get(self.command_key) == cmd_name:
-
-                # replace this entry in the list with the new cmd
-                sched_list[i] = command_dict
-
-                # save the new list over the old one.
-                datastore.save_device_data(device_ID, 
-                    self.schedule_property, sched_list)
-                break
-        logging.debug(f'{self.name}.replace_command '
-            f'{command_dict.get(self.command_key)} in list: {sched_list}')
+        # get any existing entity for this command and delete it.
+        self.remove_command(device_ID, cmd_name)
+        # save the command as a new entity
+        datastore.save_device_data(device_ID, self.schedule_property, cmd_dict)
+        logging.debug(f'{self.name}.update_command {cmd_dict}')
 
 
     #--------------------------------------------------------------------------
@@ -289,8 +262,8 @@ class Scheduler:
             cmd[self.count_key] = cmd.get(self.count_key, 0) + 1
             run_at = now + dt.timedelta(hours=default_repeat)
             cmd[self.run_at_key] = run_at.strftime('%FT%XZ')
-            # Put this command back in the list and save it.
-            self.replace_command(device_ID, cmd)
+            # Update this command
+            self.update_command(device_ID, cmd)
             logging.debug(f'{self.name}.check updated/replaced {cmd}')
 
 
