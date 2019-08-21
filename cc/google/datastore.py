@@ -222,7 +222,7 @@ def save_with_key(kind: str, key: str, data: str) -> bool:
 
     except Exception as e:
         exc_type, exc_value, exc_traceback = sys.exc_info()
-        logging.critical(f'Exception in save_with_key(): {e}')
+        logging.critical(f'Exception in save_with_key(): {e} data={data}')
         traceback.print_tb( exc_traceback, file=sys.stdout )
         return False
 

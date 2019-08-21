@@ -100,7 +100,7 @@ class WeatherData:
     def __save_device_to_DS(self, data_type: str, device_name: str, data: dict) -> bool:
         try:
             if data_type is None or device_name is None or data is None:
-                logging.error(f'{self.__name} __save_DS: invalid args.')
+                logging.error(f'{self.__name} __save_device_to_DS: invalid args.')
                 return False
             datastore.save_with_key(
                     self.__kind,        # Weather entity
@@ -108,7 +108,7 @@ class WeatherData:
                     json.dumps(data))   # data to save
             return True
         except Exception as e:
-            logging.error(f'{self.__name} __save_DS: {e}')
+            logging.error(f'{self.__name} __save_device_to_DS: {e}')
             return False
 
 
