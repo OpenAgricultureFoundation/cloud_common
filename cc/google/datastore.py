@@ -724,7 +724,7 @@ def save_dict_to_entity(entity_kind: str, entity_key: str, property_name: str,
         pydict: Dict, timestamp: str = None) -> bool:
     try:
         if timestamp is None:
-            timestamp = dt.datetime.isoformat() + 'Z'
+            timestamp = dt.datetime.utcnow().isoformat()
 
         DS = get_client()
         if DS is None:
