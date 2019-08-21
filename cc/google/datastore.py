@@ -167,6 +167,44 @@ def get_device_data(property_name: str, device_uuid: str, count: int = None):
     return get_sharded_entity(DS_device_data_KIND, property_name, device_uuid,
             count)
 
+#------------------------------------------------------------------------------
+# Private helper for function below.
+def __add_latest_property_to_dict(device_uuid: str, key: str, rdict: dict):
+    var = get_device_data(key, device_uuid, count=1)
+    val = ''
+    if 0 <= len(var):
+        var = var[0]
+        val = var.get("value", '')
+    rdict[key] = val
+
+def __add_boot_time_to_dict(device_uuid: str, rdict: dict):
+    var = get_device_data(DS_boot_KEY, device_uuid, count=1)
+    val = ''
+    if 0 <= len(var):
+        var = var[0]
+        val = var.get("timestamp", '')
+    rdict['boot_time'] = val
+
+
+#------------------------------------------------------------------------------
+# Return a dict of {'property_name':value,...} for all the usual properties.
+# The most recent (by time) values are in the dict.
+def get_all_recent_device_data_properties(device_uuid: str):
+    return_dict = {}
+    __add_boot_time_to_dict(device_uuid, return_dict)
+    __add_latest_property_to_dict(device_uuid, DS_boot_KEY, return_dict)
+    __add_latest_property_to_dict(device_uuid, DS_status_KEY, return_dict)
+    __add_latest_property_to_dict(device_uuid, DS_co2_KEY, return_dict)
+    __add_latest_property_to_dict(device_uuid, DS_rh_KEY, return_dict)
+    __add_latest_property_to_dict(device_uuid, DS_temp_KEY, return_dict)
+    __add_latest_property_to_dict(device_uuid, DS_led_KEY, return_dict)
+    __add_latest_property_to_dict(device_uuid, DS_led_dist_KEY, return_dict)
+    __add_latest_property_to_dict(device_uuid, DS_led_intensity_KEY, return_dict)
+    __add_latest_property_to_dict(device_uuid, DS_h20_ec_KEY, return_dict)
+    __add_latest_property_to_dict(device_uuid, DS_h20_ph_KEY, return_dict)
+    __add_latest_property_to_dict(device_uuid, DS_h20_temp_KEY, return_dict)
+    return return_dict
+
 
 #------------------------------------------------------------------------------
 # Return the entity indexed by our custom key (usually the device ID).
@@ -686,7 +724,7 @@ def save_dict_to_entity(entity_kind: str, entity_key: str, property_name: str,
         pydict: Dict, timestamp: str = None) -> bool:
     try:
         if timestamp is None:
-            timestamp = dt.datetime.utcnow().strftime('%FT%XZ')
+            timestamp = dt.datetime.isoformat() + 'Z'
 
         DS = get_client()
         if DS is None:

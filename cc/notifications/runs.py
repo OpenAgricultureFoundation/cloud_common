@@ -70,7 +70,11 @@ class Runs:
     #     start may be None if a recipe has never been run.
     #     end may be None if the run is in progress.
     def get_latest(self, device_ID: str) -> Dict[ str, str ]:
-        return datastore.get_device_data(self.runs_property, device_ID, count=1)
+        runs = datastore.get_device_data(self.runs_property, device_ID, count=1)
+        run = {}
+        if 0 < len(runs):
+            run = runs[0]
+        return run
 
 
     #--------------------------------------------------------------------------
