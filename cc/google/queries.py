@@ -23,7 +23,7 @@ values
 FROM openag_public_user_data.vals
 WHERE 
   ( 'air_humidity_percent' = REGEXP_EXTRACT(id, r'(?:[^\~]*\~){1}([^~]*)') 
- OR 'air_temperature_celcius' = REGEXP_EXTRACT(id, r'(?:[^\~]*\~){1}([^~]*)') )
+ OR 'air_temperature_celsius' = REGEXP_EXTRACT(id, r'(?:[^\~]*\~){1}([^~]*)') )
 AND 'PlaceHolderForDeviceUUID' = REGEXP_EXTRACT(id, r'(?:[^\~]*\~){3}([^~]*)')
 AND TIMESTAMP( REGEXP_EXTRACT(id, r'(?:[^\~]*\~){2}([^~]*)')) <= CURRENT_TIMESTAMP()
 AND TIMESTAMP( REGEXP_EXTRACT(id, r'(?:[^\~]*\~){2}([^~]*)')) >= TIMESTAMP(DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY))

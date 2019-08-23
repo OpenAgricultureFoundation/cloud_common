@@ -39,7 +39,7 @@ DS_images_KIND = 'Images'
 DS_device_uuid_KEY = 'device_uuid'
 DS_co2_KEY = 'air_carbon_dioxide_ppm'
 DS_rh_KEY = 'air_humidity_percent'
-DS_temp_KEY = 'air_temperature_celcius'
+DS_temp_KEY = 'air_temperature_celsius'
 DS_led_KEY = 'light_spectrum_nm_percent'
 DS_led_dist_KEY = 'light_illumination_distance_cm'
 DS_led_intensity_KEY = 'light_intensity_watts'
@@ -47,7 +47,7 @@ DS_boot_KEY = 'boot'
 DS_status_KEY = 'status'  
 DS_h20_ec_KEY = 'water_electrical_conductivity_ms_cm'
 DS_h20_ph_KEY = 'water_potential_hydrogen'
-DS_h20_temp_KEY = 'water_temperature_celcius'
+DS_h20_temp_KEY = 'water_temperature_celsius'
 DS_runs_KEY = 'runs'
 DS_notifications_KEY = 'notifications'
 DS_schedule_KEY = 'schedule'
@@ -57,10 +57,14 @@ DS_schedule_KEY = 'schedule'
 __ds_client = None
 
 
+def __name() -> str:
+    return 'cloud_common.cc.google.datastore'
+
+
 #------------------------------------------------------------------------------
 # Datastore client for google cloud
 def create_client() -> Any:
-    logging.debug(f'cloud_common.cc.google.datastore client created.')
+    logging.debug(f'{__name()} client created.')
     return datastore.Client(env_vars.cloud_project_id)
 
 
@@ -141,6 +145,7 @@ def get_sharded_entities(kind: str, property_name: str, device_key: str,
     if DS is None:
         return []
     kind = get_sharded_kind(kind, property_name, device_key)
+    logging.debug(f'{__name()} get_sharded_entities: entity={kind}')
     # Sort by timestamp descending
     query = DS.query(kind=kind, 
                      order=['-' + DS_DeviceData_timestamp_Property])
@@ -153,6 +158,7 @@ def get_sharded_entities(kind: str, property_name: str, device_key: str,
 def get_sharded_entity(kind: str, property_name: str, device_key: str, 
         count: int = None):
     entities = get_sharded_entities(kind, property_name, device_key, count)
+    logging.debug(f'{__name()} get_sharded_entity: count={len(entities)}')
     ret = []
     for e in entities:
         data = e.get(DS_DeviceData_data_Property, {})
@@ -164,8 +170,10 @@ def get_sharded_entity(kind: str, property_name: str, device_key: str,
 # Return count rows of data for this property and device.
 # Count can be None to get all rows.
 def get_device_data(property_name: str, device_uuid: str, count: int = None):
-    return get_sharded_entity(DS_device_data_KIND, property_name, device_uuid,
+    ret = get_sharded_entity(DS_device_data_KIND, property_name, device_uuid,
             count)
+    logging.debug(f'{__name()} get_device_data: count={len(ret)}')
+    return ret
 
 #------------------------------------------------------------------------------
 # Private helper for function below.
@@ -289,7 +297,7 @@ def get_device_data_from_DS(device_uuid):
     if 0 == len(temp):
         return None
     temp = temp[0]
-    air_temperature_celcius = temp.get("value", '')
+    air_temperature_celsius = temp.get("value", '')
 
     status = get_device_data(DS_status_KEY, device_uuid, count=1)
     if 0 == len(status):
@@ -301,7 +309,7 @@ def get_device_data_from_DS(device_uuid):
         "percent_complete": status.get("recipe_percent_complete_string", ""),
         "time_elapsed": status.get("recipe_time_elapsed_string", ""),
         "device_status": status.get("status", ""),
-        "air_temp": air_temperature_celcius
+        "air_temp": air_temperature_celsius
     }
     return result_json
 
