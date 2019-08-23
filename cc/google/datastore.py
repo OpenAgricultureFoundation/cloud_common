@@ -47,7 +47,7 @@ DS_boot_KEY = 'boot'
 DS_status_KEY = 'status'  
 DS_h20_ec_KEY = 'water_electrical_conductivity_ms_cm'
 DS_h20_ph_KEY = 'water_potential_hydrogen'
-DS_h20_temp_KEY = 'water_temperature_celcius'
+DS_h20_temp_KEY = 'water_temperature_celsius'
 DS_runs_KEY = 'runs'
 DS_notifications_KEY = 'notifications'
 DS_schedule_KEY = 'schedule'
@@ -297,7 +297,7 @@ def get_device_data_from_DS(device_uuid):
     if 0 == len(temp):
         return None
     temp = temp[0]
-    air_temperature_celcius = temp.get("value", '')
+    air_temperature_celsius = temp.get("value", '')
 
     status = get_device_data(DS_status_KEY, device_uuid, count=1)
     if 0 == len(status):
@@ -309,7 +309,7 @@ def get_device_data_from_DS(device_uuid):
         "percent_complete": status.get("recipe_percent_complete_string", ""),
         "time_elapsed": status.get("recipe_time_elapsed_string", ""),
         "device_status": status.get("status", ""),
-        "air_temp": air_temperature_celcius
+        "air_temp": air_temperature_celsius
     }
     return result_json
 
