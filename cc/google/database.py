@@ -27,7 +27,7 @@ def get_all_historical_values(device_uuid, start_timestamp, end_timestamp):
             count=1000)
     rh_vals = datastore.get_device_data(datastore.DS_rh_KEY, device_uuid, 
             count=1000)
-    if 0 == len(co2_vals) or 0 == len(temp_vals) or 0 == len(rh_vals):
+    if 0 == len(co2_vals) and 0 == len(temp_vals) and 0 == len(rh_vals):
         print(f'get_all_historical_values: No DeviceData for {device_uuid}')
         return temp, RH, co2, leaf_count, plant_height
 

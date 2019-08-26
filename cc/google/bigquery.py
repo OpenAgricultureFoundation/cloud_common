@@ -37,7 +37,7 @@ def get_temp_and_humidity_history_from_BQ(device_uuid):
         rvalues = row[2]  # can't use row.values
         values_json = (ast.literal_eval(rvalues))
 
-        if 'air_temperature_celcius' == row.var and 'values' in values_json:
+        if 'air_temperature_celsius' == row.var and 'values' in values_json:
             values = values_json["values"]
             result_json["temp"].append(
                 {'value': values[0]['value'], 'time': row.eastern_time})
