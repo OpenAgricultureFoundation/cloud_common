@@ -118,3 +118,22 @@ AND TIMESTAMP( REGEXP_EXTRACT(id, r'(?:[^\~]*\~){2}([^~]*)')) <= CURRENT_TIMESTA
 AND TIMESTAMP( REGEXP_EXTRACT(id, r'(?:[^\~]*\~){2}([^~]*)')) >= TIMESTAMP(DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY))
 ORDER BY REGEXP_EXTRACT(id, r'(?:[^\~]*\~){2}([^~]*)') DESC 
 LIMIT 2500"""
+
+
+#------------------------------------------------------------------------------
+counts = """#standardsql
+#standardsql
+SELECT count(*) as total_count, 
+  (SELECT count(*) FROM openag_public_user_data.vals WHERE 'air_carbon_dioxide_ppm' = REGEXP_EXTRACT(id, r'(?:[^\~]*\~){1}([^~]*)')) as air_carbon_dioxide_ppm_count,
+  (SELECT count(*) FROM openag_public_user_data.vals WHERE 'air_humidity_percent' = REGEXP_EXTRACT(id, r'(?:[^\~]*\~){1}([^~]*)')) as air_humidity_percent_count,
+  (SELECT count(*) FROM openag_public_user_data.vals WHERE 'air_temperature_celcius' = REGEXP_EXTRACT(id, r'(?:[^\~]*\~){1}([^~]*)')) as air_temperature_celcius_count,
+  (SELECT count(*) FROM openag_public_user_data.vals WHERE 'boot' = REGEXP_EXTRACT(id, r'(?:[^\~]*\~){1}([^~]*)')) as boot_count,
+  (SELECT count(*) FROM openag_public_user_data.vals WHERE 'light_ppfd_umol_m2_s' = REGEXP_EXTRACT(id, r'(?:[^\~]*\~){1}([^~]*)')) as light_ppfd_umol_m2_s_count,
+  (SELECT count(*) FROM openag_public_user_data.vals WHERE 'light_spectrum_nm_percent' = REGEXP_EXTRACT(id, r'(?:[^\~]*\~){1}([^~]*)')) as light_spectrum_nm_percent_count,
+  (SELECT count(*) FROM openag_public_user_data.vals WHERE 'status' = REGEXP_EXTRACT(id, r'(?:[^\~]*\~){1}([^~]*)')) as status_count,
+  (SELECT count(*) FROM openag_public_user_data.vals WHERE 'water_electrical_conductivity_ms_cm' = REGEXP_EXTRACT(id, r'(?:[^\~]*\~){1}([^~]*)')) as water_electrical_conductivity_ms_cm_count,
+  (SELECT count(*) FROM openag_public_user_data.vals WHERE 'water_potential_hydrogen' = REGEXP_EXTRACT(id, r'(?:[^\~]*\~){1}([^~]*)')) as water_potential_hydrogen_count,
+  (SELECT count(*) FROM openag_public_user_data.vals WHERE 'URL' = JSON_EXTRACT_SCALAR(values, "$.values[0].name") AND FALSE = REGEXP_CONTAINS(values, "'value':'None'")) as URL_count
+  FROM openag_public_user_data.vals;
+"""
+

@@ -91,3 +91,19 @@ def save(data_type: str, device_name: str, timestamp: str, data: dict) -> bool:
         return False
 
 
+#------------------------------------------------------------------------------
+# Get the counts of types of data values in the public repo.
+# Returns a dict of the queried names and values.
+def get_total_count_of_data_values_from_BQ():
+    res = {}
+    job_config = bigquery.QueryJobConfig()
+    job_config.use_legacy_sql = False
+    query_job = bigquery_client.query(queries.counts, job_config=job_config)
+    query_result = query_job.result()
+    for row in list(query_result):
+        vals = list(row.items())
+        for val in vals:
+            res[ val[0] ] = "{:,}".format(int(val[1])) # counts are ints
+    return res
+
+

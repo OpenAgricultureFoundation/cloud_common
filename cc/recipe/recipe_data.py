@@ -46,6 +46,10 @@ class RecipeData:
         config['timestamp'] = now
         ret = self.__save_DS(config)
         print(f'debugrob: write_config {config}')
+
+#debugrob: BUG:
+# CRITICAL:root:bigquery.data_insert: Exception: tuple index out of range
+
         bigquery.save('recipe_generator_config', 
                 config['devices_to_control'][0], # use first device in list
                 now, config)

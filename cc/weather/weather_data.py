@@ -140,13 +140,10 @@ class WeatherData:
     # Return the details about an arable device.
     # Use get_arable_devices() to get the list of device keys.
     def get_device_details(self, device_key: str) -> Dict:
-        details = datastore.get_sharded_entity(self.__kind, 'device', 
-                device_key, count=1)
+        details = datastore.get_by_key(self.__kind, device_key)
         if 0 == len(details):
             return {}
-        details = details[0]
-        details = details.get(datastore.DS_DeviceData_data_Property, {})
-        return details # return the first (latest) dict
+        return details 
 
 
     #--------------------------------------------------------------------------

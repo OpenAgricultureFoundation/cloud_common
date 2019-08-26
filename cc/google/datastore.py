@@ -172,7 +172,7 @@ def get_device_data(property_name: str, device_uuid: str, count: int = None):
 def __add_latest_property_to_dict(device_uuid: str, key: str, rdict: dict):
     var = get_device_data(key, device_uuid, count=1)
     val = ''
-    if 0 <= len(var):
+    if 0 < len(var):
         var = var[0]
         val = var.get("value", '')
     rdict[key] = val
@@ -180,7 +180,7 @@ def __add_latest_property_to_dict(device_uuid: str, key: str, rdict: dict):
 def __add_boot_time_to_dict(device_uuid: str, rdict: dict):
     var = get_device_data(DS_boot_KEY, device_uuid, count=1)
     val = ''
-    if 0 <= len(var):
+    if 0 < len(var):
         var = var[0]
         val = var.get("timestamp", '')
     rdict['boot_time'] = val
@@ -263,6 +263,31 @@ def save_with_key(kind: str, key: str, data: str) -> bool:
         logging.critical(f'Exception in save_with_key(): {e} data={data}')
         traceback.print_tb( exc_traceback, file=sys.stdout )
         return False
+
+
+#------------------------------------------------------------------------------
+# Return a custom keyed entity.  
+# Returns the entity or {}
+def get_by_key(kind: str, key: str) -> dict:
+    try:
+        DS = get_client()
+        if DS is None:
+            return {}
+
+        # Get this entity from the datastore (or create an empty one).
+        # These entities are custom keyed with our device_ID.
+        ddkey = DS.key(kind, key)
+        dd = DS.get(ddkey) 
+        if not dd: 
+            return {}
+        logging.info(f'get_by_key: kind={kind} key={key} return={dd[key]}')
+        return dd[key]
+
+    except Exception as e:
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        logging.critical(f'Exception in get_by_key(): {e} data={data}')
+        traceback.print_tb( exc_traceback, file=sys.stdout )
+        return {}
 
 
 #------------------------------------------------------------------------------
@@ -456,8 +481,9 @@ def get_list_of_device_data_from_DS():
             user = get_one_from_DS(DS_users_KIND, 'user_uuid', user_uuid)
             if user is not None:
                 device['user_name'] = user.get('username','None')
+                device['email_address'] = user.get('email_address','None')
 
-        # Get the DeviceData for this device ID
+        # Get the boot DeviceData for this device ID
         dd = []
         if 0 < len(device_uuid):
             dd = get_device_data(DS_boot_KEY, device_uuid, count=1)
@@ -491,35 +517,61 @@ def get_list_of_device_data_from_DS():
 
         epoch = '1970-01-01T00:00:00Z'
         last_message_time = epoch
-        val, ts = get_latest_val_from_DeviceData(dd, DS_rh_KEY)
-        device[DS_rh_KEY] = val
-        if ts > last_message_time:
-            last_message_time = ts
 
-        val, ts = get_latest_val_from_DeviceData(dd, DS_temp_KEY)
-        device[DS_temp_KEY] = val
-        if ts > last_message_time:
-            last_message_time = ts
+        # Get the boot DeviceData for this device ID
+        dd = get_device_data(DS_rh_KEY, device_uuid, count=1)
+        if 0 < len(dd):
+            dd = dd[0]
+            val = dd.get('value')
+            ts = dd.get('timestamp', b'') 
+            device[DS_rh_KEY] = val
+            if ts > last_message_time:
+                last_message_time = ts
 
-        val, ts = get_latest_val_from_DeviceData(dd, DS_co2_KEY)
-        device[DS_co2_KEY] = val
-        if ts > last_message_time:
-            last_message_time = ts
+        dd = get_device_data(DS_temp_KEY, device_uuid, count=1)
+        if 0 < len(dd):
+            dd = dd[0]
+            val = dd.get('value')
+            ts = dd.get('timestamp', b'') 
+            device[DS_temp_KEY] = val
+            if ts > last_message_time:
+                last_message_time = ts
 
-        val, ts = get_latest_val_from_DeviceData(dd, DS_h20_ec_KEY)
-        device[DS_h20_ec_KEY] = val
-        if ts > last_message_time:
-            last_message_time = ts
+        dd = get_device_data(DS_co2_KEY, device_uuid, count=1)
+        if 0 < len(dd):
+            dd = dd[0]
+            val = dd.get('value')
+            ts = dd.get('timestamp', b'') 
+            device[DS_co2_KEY] = val
+            if ts > last_message_time:
+                last_message_time = ts
 
-        val, ts = get_latest_val_from_DeviceData(dd, DS_h20_ph_KEY)
-        device[DS_h20_ph_KEY] = val
-        if ts > last_message_time:
-            last_message_time = ts
+        dd = get_device_data(DS_h20_ec_KEY, device_uuid, count=1)
+        if 0 < len(dd):
+            dd = dd[0]
+            val = dd.get('value')
+            ts = dd.get('timestamp', b'') 
+            device[DS_h20_ec_KEY] = val
+            if ts > last_message_time:
+                last_message_time = ts
 
-        val, ts = get_latest_val_from_DeviceData(dd, DS_h20_temp_KEY)
-        device[DS_h20_temp_KEY] = val
-        if ts > last_message_time:
-            last_message_time = ts
+        dd = get_device_data(DS_h20_ph_KEY, device_uuid, count=1)
+        if 0 < len(dd):
+            dd = dd[0]
+            val = dd.get('value')
+            ts = dd.get('timestamp', b'') 
+            device[DS_h20_ph_KEY] = val
+            if ts > last_message_time:
+                last_message_time = ts
+
+        dd = get_device_data(DS_h20_temp_KEY, device_uuid, count=1)
+        if 0 < len(dd):
+            dd = dd[0]
+            val = dd.get('value')
+            ts = dd.get('timestamp', b'') 
+            device[DS_h20_temp_KEY] = val
+            if ts > last_message_time:
+                last_message_time = ts
 
         if last_message_time == epoch:
             last_message_time = 'Never'
@@ -563,21 +615,6 @@ def get_latest_image_URL(device_uuid):
 def decode_url(image_entity):
     url = image_entity.get('URL', '')
     return utils.bytes_to_string(url)
-
-
-#------------------------------------------------------------------------------
-# Returns the value, timestamp if the key exists
-def get_latest_val_from_DeviceData(dd, key):
-    if dd is None or key not in dd:
-        return '', ''
-    valsList = dd.get(key, []) # list of values
-    # return latest value and timestamp
-    value = valsList[0].get('value', b'')
-    value = utils.bytes_to_string(value) # could be bytes, so decode
-
-    ts = valsList[0].get('timestamp', b'') 
-    ts = utils.bytes_to_string(ts) # could be bytes, so decode
-    return value, ts
 
 
 #------------------------------------------------------------------------------

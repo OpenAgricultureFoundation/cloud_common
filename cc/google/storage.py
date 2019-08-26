@@ -16,21 +16,7 @@ URL_TEMPLATE = 'https://console.cloud.google.com/storage/browser/{}?project=open
 
 #------------------------------------------------------------------------------
 def get_latest_debian_package_from_storage():
-    try:
-        bucket = storage_client.get_bucket(DEBIAN_PACKAGE_BUCKET)
-        blobs = list(bucket.list_blobs())
-        # Blobs seem to come back in the order you'd expect. 
-        # So take the last one that ends in '.deb'
-        latest = ''
-        for blob in blobs:
-            if blob.name.endswith('.deb'):
-                latest = blob.name 
-        # pool/main/o/openagbrain/openagbrain_1.0-4_armhf.deb
-        # trim up to the last '/'
-        return latest[latest.rfind('/')+1:]
-    except google.cloud.exceptions.NotFound:
-        logging.error(f'bucket does not exist:{DEBIAN_PACKAGE_BUCKET}')
-    return None # no data
+    return "deprecated" # no longer using debian packages
 
 
 #------------------------------------------------------------------------------
