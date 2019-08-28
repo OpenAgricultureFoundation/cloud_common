@@ -45,9 +45,8 @@ class RecipeData:
         now = dt.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
         config['timestamp'] = now
         ret = self.__save_DS(config)
-        print(f'debugrob: write_config {config}')
 
-#debugrob: BUG:
+#TODO: log message from console
 # CRITICAL:root:bigquery.data_insert: Exception: tuple index out of range
 
         bigquery.save('recipe_generator_config', 
@@ -149,7 +148,7 @@ class RecipeData:
         last_date = ''
         last_ts = None
         phase = {}
-        # Iterate in date order (earliest to latest), this required looping
+        # Iterate in date order (earliest to latest), this requires looping
         # through the data array in reverse order.
         for i in range(len(weather_data) - 1, -1, -1): # start, end, step
             w = weather_data[i]

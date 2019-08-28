@@ -47,7 +47,8 @@ class WeatherData:
     #
     def get_computed_weather_data(self, 
             start_date: str, end_date: str, 
-            arable_device_name: str) -> List[Dict]:
+            arable_device_name: str,
+            hourly: bool = True) -> List[Dict]:
         # The datastore caches all data points from each device 
         rows = datastore.get_sharded_entity(self.__kind, 'computed',
                 arable_device_name) 
@@ -62,11 +63,12 @@ class WeatherData:
         # Filter the data for the date range requested
         computed_data_list = []
         for row in rows:
-            data = row.get(datastore.DS_DeviceData_data_Property, {})
-            ts = data.get('time', '')
+            # turn the JSON string into a dict
+            row = json.loads(row)
+            ts = row.get('time', '')
             date = ts[0:10] # first 10 chars of the timestamp is date
             if date in dates:
-                computed_data_list.append(data)
+                computed_data_list.append(row)
         # Remove duplicate timestamps
         previous_ts = None
         for d in computed_data_list:
@@ -74,7 +76,19 @@ class WeatherData:
                 computed_data_list.remove(d)
                 continue
             previous_ts = d['time'] 
-        return computed_data_list # return the data 
+        # Only return data for ONCE an HOUR (or recipe way exceeds 65536 max
+        # size allowed by IoT)
+        hourly_data_list = []
+        if hourly:
+            previous_hour = ''
+            for d in computed_data_list:
+                hour = d['time'][11:13] # just get the hours field
+                if hour != previous_hour:
+                    hourly_data_list.append(d)
+                    previous_hour = hour
+            return hourly_data_list # return the hourly data
+
+        return computed_data_list # return the (5 min) data 
 
 
     #--------------------------------------------------------------------------
