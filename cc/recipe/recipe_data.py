@@ -219,6 +219,8 @@ class RecipeData:
         # (phase == day, repeat for insurance in case system has issues
         # getting more data)
         phase["repeat"] = times_to_repeat_last_day_in_recipe
+        if compress_time: 
+            phase["repeat"] = 1000000 # if compressing, repeat for a long time
 
         '''
         # For debugging, comment out for production
