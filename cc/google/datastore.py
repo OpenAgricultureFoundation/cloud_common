@@ -167,6 +167,31 @@ def get_sharded_entity(kind: str, property_name: str, device_key: str,
 
 
 #------------------------------------------------------------------------------
+# Return count rows of DATA for this property and device key.
+# Count can be None to get all rows.
+def get_sharded_entity_range(kind: str, property_name: str, device_key: str, 
+        start_date: str, end_date: str, count: int = None):
+
+    DS = get_client()
+    if DS is None:
+        return []
+    kind = get_sharded_kind(kind, property_name, device_key)
+    logging.debug(f'{__name()} get_sharded_entity_range: entity={kind} start={start_date} end={end_date}')
+    # Sort by timestamp descending, over the date range
+    query = DS.query(kind=kind, 
+                     order=['-' + DS_DeviceData_timestamp_Property])
+    query.add_filter(DS_DeviceData_timestamp_Property, '>=', start_date)
+    query.add_filter(DS_DeviceData_timestamp_Property, '<=', end_date)
+    entities = list(query.fetch(limit=count)) # get count number of rows
+    logging.debug(f'{__name()} get_sharded_entity_range: count={len(entities)}')
+    ret = []
+    for e in entities:
+        data = e.get(DS_DeviceData_data_Property, {})
+        ret.append(data)
+    return ret
+
+
+#------------------------------------------------------------------------------
 # Return count rows of data for this property and device.
 # Count can be None to get all rows.
 def get_device_data(property_name: str, device_uuid: str, count: int = None):

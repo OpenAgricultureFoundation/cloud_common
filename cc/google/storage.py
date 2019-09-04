@@ -115,6 +115,21 @@ def uploadFile(fp, bucket_name: str, file_name: str, content_type: str = 'image/
 
 
 #------------------------------------------------------------------------------
+# Upload a file from a string.
+# Returns the public URL for success or None for error.
+def uploadFileFromString(contents: str, bucket_name: str, file_name: str, content_type: str = 'application/json') -> bool:
+    try:
+        bucket = storage_client.get_bucket(bucket_name)
+        blob = bucket.blob(file_name) # make a new blob
+        blob.upload_from_string(contents, content_type=content_type)
+        logging.debug(f'storage.uploadFileFromString {file_name} to {blob.public_url}')
+        return blob.public_url
+    except Exception as e:
+        logging.error(f'storage.uploadFile {e}')
+        return None
+
+
+#------------------------------------------------------------------------------
 # Save the image bytes to a file in cloud storage.
 # The cloud storage bucket we are using allows "allUsers" to read files.
 # Return the public URL to the file in a cloud storage bucket.

@@ -50,45 +50,23 @@ class WeatherData:
             arable_device_name: str,
             hourly: bool = True) -> List[Dict]:
         # The datastore caches all data points from each device 
-        rows = datastore.get_sharded_entity(self.__kind, 'computed',
-                arable_device_name) 
-        # Create a list of dates in the range requested
-        start = dt.strptime(start_date, '%Y-%m-%d')
-        end = dt.strptime(end_date, '%Y-%m-%d')
-        step = timedelta(days=1)
-        dates = []
-        while start <= end:
-            dates.append(str(start.date()))
-            start += step
-        # Filter the data for the date range requested
-        computed_data_list = []
+        rows = datastore.get_sharded_entity_range(self.__kind, 'computed',
+                arable_device_name, start_date, end_date) 
+        # Sort by timestamp
+        sorted_rows = []
         for row in rows:
-            # turn the JSON string into a dict
             row = json.loads(row)
-            ts = row.get('time', '')
-            date = ts[0:10] # first 10 chars of the timestamp is date
-            if date in dates:
-                computed_data_list.append(row)
+            sorted_rows.append(row)
+        sorted_rows = sorted(sorted_rows, key=lambda r: r.get('time'), 
+                reverse=True)
         # Remove duplicate timestamps
         previous_ts = None
-        for d in computed_data_list:
+        for d in sorted_rows:
             if d['time'] == previous_ts:
-                computed_data_list.remove(d)
+                sorted_rows.remove(d)
                 continue
             previous_ts = d['time'] 
-        # Only return data for ONCE an HOUR (or recipe way exceeds 65536 max
-        # size allowed by IoT)
-        hourly_data_list = []
-        if hourly:
-            previous_hour = ''
-            for d in computed_data_list:
-                hour = d['time'][11:13] # just get the hours field
-                if hour != previous_hour:
-                    hourly_data_list.append(d)
-                    previous_hour = hour
-            return hourly_data_list # return the hourly data
-
-        return computed_data_list # return the (5 min) data 
+        return sorted_rows # return the (5 min) data 
 
 
     #--------------------------------------------------------------------------
