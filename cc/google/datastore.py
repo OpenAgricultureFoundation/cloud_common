@@ -423,6 +423,8 @@ def get_list_of_basic_device_info():
         device['device_notes'] = d.get('device_notes', '')
         device['device_uuid'] = d.get('device_uuid', '')
         res.append(device)
+    # sort by name
+    res = sorted(res, key=lambda d: d.get('device_name'))
     return res
 
 #------------------------------------------------------------------------------
