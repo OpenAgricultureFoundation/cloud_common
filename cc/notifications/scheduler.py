@@ -133,6 +133,14 @@ class Scheduler:
 
 
     #--------------------------------------------------------------------------
+    def get_command_dict(self, device_ID: str, command: str) -> Dict[str, str]:
+        e = self.get_command_entity(device_ID, command)
+        if e is not None:
+            return e.get(datastore.DS_DeviceData_data_Property, {})
+        return None
+
+
+    #--------------------------------------------------------------------------
     # Creates a DS dict entry for this scheduled command, 
     # setting timestamp = now() + hours and count = 0.
     def add(self, device_ID: str, command: str, repeat_hours: int = -1) -> None:
@@ -162,8 +170,6 @@ class Scheduler:
         # update this command dict (remove and add)
         self.update_command(device_ID, cmd_dict)
 
-        # save the command as a new entity
-        datastore.save_device_data(device_ID, self.schedule_property, cmd_dict)
         logging.debug(f'{self.name}.added command to schedule: {cmd_dict}')
 
 
@@ -209,8 +215,7 @@ class Scheduler:
 
 
     #--------------------------------------------------------------------------
-    # Replaces a command in the list.  
-    # If the command isn't already in the list, nothing changes.
+    # Replaces a command in the entity.  
     def update_command(self, device_ID: str, cmd_dict: Dict[str, str]) -> None:
         cmd_name = cmd_dict.get(self.command_key, None)
         if not self.__validate_command(cmd_name):

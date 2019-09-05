@@ -45,7 +45,10 @@ class RecipeData:
         now = dt.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
         config['timestamp'] = now
         ret = self.__save_DS(config)
-        print(f'debugrob: write_config {config}')
+
+#TODO: log message from console
+# CRITICAL:root:bigquery.data_insert: Exception: tuple index out of range
+
         bigquery.save('recipe_generator_config', 
                 config['devices_to_control'][0], # use first device in list
                 now, config)
@@ -90,7 +93,6 @@ class RecipeData:
         except Exception as e:
             logging.error(f'{self.__name} __save_DS: {e}')
             return False
-
 
 
     #--------------------------------------------------------------------------
@@ -145,7 +147,7 @@ class RecipeData:
         last_date = ''
         last_ts = None
         phase = {}
-        # Iterate in date order (earliest to latest), this required looping
+        # Iterate in date order (earliest to latest), this requires looping
         # through the data array in reverse order.
         for i in range(len(weather_data) - 1, -1, -1): # start, end, step
             w = weather_data[i]
@@ -163,8 +165,7 @@ class RecipeData:
             temp = w['air_temp_degrees_C']
             RH = w['air_RH_percent']
             PAR = w['light_PAR_uE_m2_s']
-            logging.info(f'{name} {ts.minute:02} '
-                    f'{temp:4.2f} {RH:6.2f} {PAR:7.2f} ')
+            logging.info(f'{name} {temp:4.2f} {RH:6.2f} {PAR:7.2f}')
 
             # Add a named environment 
             template_recipe_dict["environments"][name] = {
@@ -236,4 +237,67 @@ class RecipeData:
         return json.dumps(template_recipe_dict)
 
 
+    # Create and return a recipe from manual set points.
+    def create_manual_recipe(self,
+            manual_air_temperature_celsius: float,
+            manual_air_humidity_percent: float,
+            manual_light_ppfd_umol_m2_s: int,
+            light_illumination_distance_cm: int) -> str:
+        template_recipe_dict = {
+            "format": "openag-phased-environment-v1",
+            "version": "4.0.1",
+            "creation_timestamp_utc": dt.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "name": "Manual set point recipe",
+            "uuid": str(uuid.uuid4()),
+            "parent_recipe_uuid": None,
+            "support_recipe_uuids": None,
+            "description": {
+                "brief": "Created by recipe generator service",
+                "verbose": "Created by recipe generator service",
+            },
+            "authors": [],
+            "cultivars": [],
+            "cultivation_methods": [],
+            "environments": {},
+            "phases": [],
+        }
+
+        # Use this for now, until we calibrate the LGHC COB and make an
+        # LED peripheral setup with the spectrum mappings for it.
+        PFC_sun_spectrum = {
+            "380-399": 2.03, 
+            "400-499": 20.3,
+            "500-599": 23.27, 
+            "600-700": 31.09, 
+            "701-780": 23.31
+        }
+
+        # Add a named environment 
+        template_recipe_dict["environments"]["manual"] = {
+            "name": "manual",
+            "light_spectrum_nm_percent": PFC_sun_spectrum,
+            "light_ppfd_umol_m2_s": manual_light_ppfd_umol_m2_s, 
+            "light_illumination_distance_cm": light_illumination_distance_cm, 
+            "air_temperature_celsius": manual_air_temperature_celsius,
+            "air_humidity_percent": manual_air_humidity_percent
+        }
+
+        # Add a new phase 
+        phase = {
+            "name": "single",
+            "repeat": 1,   # this phase is one day long
+            "cycles": []   # filled in by next block of code
+        }
+        template_recipe_dict["phases"].append(phase)
+
+        # Add one cycle to the daily phase for each time interval 
+        # in that day.
+        phase["cycles"].append({
+            "name": "manual",        # just for human display
+            "environment": "manual", # match the environment name (from above)
+            "duration_hours": 7200   # 10 months
+        })
+
+        # return the JSON recipe 
+        return json.dumps(template_recipe_dict)
 

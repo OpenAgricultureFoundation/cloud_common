@@ -16,21 +16,7 @@ URL_TEMPLATE = 'https://console.cloud.google.com/storage/browser/{}?project=open
 
 #------------------------------------------------------------------------------
 def get_latest_debian_package_from_storage():
-    try:
-        bucket = storage_client.get_bucket(DEBIAN_PACKAGE_BUCKET)
-        blobs = list(bucket.list_blobs())
-        # Blobs seem to come back in the order you'd expect. 
-        # So take the last one that ends in '.deb'
-        latest = ''
-        for blob in blobs:
-            if blob.name.endswith('.deb'):
-                latest = blob.name 
-        # pool/main/o/openagbrain/openagbrain_1.0-4_armhf.deb
-        # trim up to the last '/'
-        return latest[latest.rfind('/')+1:]
-    except google.cloud.exceptions.NotFound:
-        logging.error(f'bucket does not exist:{DEBIAN_PACKAGE_BUCKET}')
-    return None # no data
+    return "deprecated" # no longer using debian packages
 
 
 #------------------------------------------------------------------------------
@@ -122,6 +108,21 @@ def uploadFile(fp, bucket_name: str, file_name: str, content_type: str = 'image/
         blob = bucket.blob(file_name) # make a new blob
         blob.upload_from_file(fp, rewind=True, content_type=content_type)
         logging.debug(f'storage.uploadFile {file_name} to {blob.public_url}')
+        return blob.public_url
+    except Exception as e:
+        logging.error(f'storage.uploadFile {e}')
+        return None
+
+
+#------------------------------------------------------------------------------
+# Upload a file from a string.
+# Returns the public URL for success or None for error.
+def uploadFileFromString(contents: str, bucket_name: str, file_name: str, content_type: str = 'application/json') -> bool:
+    try:
+        bucket = storage_client.get_bucket(bucket_name)
+        blob = bucket.blob(file_name) # make a new blob
+        blob.upload_from_string(contents, content_type=content_type)
+        logging.debug(f'storage.uploadFileFromString {file_name} to {blob.public_url}')
         return blob.public_url
     except Exception as e:
         logging.error(f'storage.uploadFile {e}')

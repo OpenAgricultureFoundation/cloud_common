@@ -47,34 +47,26 @@ class WeatherData:
     #
     def get_computed_weather_data(self, 
             start_date: str, end_date: str, 
-            arable_device_name: str) -> List[Dict]:
+            arable_device_name: str,
+            hourly: bool = True) -> List[Dict]:
         # The datastore caches all data points from each device 
-        rows = datastore.get_sharded_entity(self.__kind, 'computed',
-                arable_device_name) 
-        # Create a list of dates in the range requested
-        start = dt.strptime(start_date, '%Y-%m-%d')
-        end = dt.strptime(end_date, '%Y-%m-%d')
-        step = timedelta(days=1)
-        dates = []
-        while start <= end:
-            dates.append(str(start.date()))
-            start += step
-        # Filter the data for the date range requested
-        computed_data_list = []
+        rows = datastore.get_sharded_entity_range(self.__kind, 'computed',
+                arable_device_name, start_date, end_date) 
+        # Sort by timestamp
+        sorted_rows = []
         for row in rows:
-            data = row.get(datastore.DS_DeviceData_data_Property, {})
-            ts = data.get('time', '')
-            date = ts[0:10] # first 10 chars of the timestamp is date
-            if date in dates:
-                computed_data_list.append(data)
+            row = json.loads(row)
+            sorted_rows.append(row)
+        sorted_rows = sorted(sorted_rows, key=lambda r: r.get('time'), 
+                reverse=True)
         # Remove duplicate timestamps
         previous_ts = None
-        for d in computed_data_list:
+        for d in sorted_rows:
             if d['time'] == previous_ts:
-                computed_data_list.remove(d)
+                sorted_rows.remove(d)
                 continue
             previous_ts = d['time'] 
-        return computed_data_list # return the data 
+        return sorted_rows # return the (5 min) data 
 
 
     #--------------------------------------------------------------------------
@@ -140,13 +132,10 @@ class WeatherData:
     # Return the details about an arable device.
     # Use get_arable_devices() to get the list of device keys.
     def get_device_details(self, device_key: str) -> Dict:
-        details = datastore.get_sharded_entity(self.__kind, 'device', 
-                device_key, count=1)
+        details = datastore.get_by_key(self.__kind, device_key)
         if 0 == len(details):
             return {}
-        details = details[0]
-        details = details.get(datastore.DS_DeviceData_data_Property, {})
-        return details # return the first (latest) dict
+        return details 
 
 
     #--------------------------------------------------------------------------
