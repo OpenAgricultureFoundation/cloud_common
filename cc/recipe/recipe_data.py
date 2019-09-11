@@ -158,6 +158,22 @@ class RecipeData:
                 last_ts = ts
                 continue 
 
+            # Calculate how long it has been since the last interval to 
+            # determine how long to run the cycle.  Float value can be 
+            # < 1.0 for a partial hour.
+            ts_delta = ts - last_ts
+
+            # If we are compressing time, skip rows until we accumulate an hour
+            # of real time, which will compress into a minute.
+            if compress_time and ts_delta.total_seconds() < 3600:
+                continue
+
+            # Calculate the duration in hours 
+            last_ts = ts
+            duration_hours = ts_delta.total_seconds() / 3600 # secs -> hours
+            if 0 == ts_delta.total_seconds():
+                continue # ignore duplicate HH:MM values
+
             # Name we will use for the enviroment and cycle
             date = f'{str(ts.date())}'
             name = f'{date}_{ts.hour:02}:{ts.minute:02}'
@@ -187,22 +203,13 @@ class RecipeData:
                 }
                 template_recipe_dict["phases"].append(phase)
 
-            # Calculate how long it has been since the last interval to 
-            # determine how long to run the cycle.  Float value can be 
-            # < 1.0 for a partial hour.
-            ts_delta = ts - last_ts
-            last_ts = ts
-            duration_hours = ts_delta.total_seconds() / 3600 # secs -> hours
-            if 0 == ts_delta.total_seconds():
-                continue # ignore duplicate HH:MM values
-
             # When TESTING, Rob is impatient, so we can compress time by 
             # making every hour equivalent to one minute.
             # (the smallest cycle the brain can handle is one minute)
             if compress_time: 
                 duration_hours /= 60 
                 if duration_hours < (1/60): # no less than 1/60 of an hour
-                    duration_hours = (1/60) # one minute
+                    duration_hours = (1/60) # one minute minimum
 
             # Add one cycle to the daily phase for each time interval 
             # in that day.
