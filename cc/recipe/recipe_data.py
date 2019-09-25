@@ -132,16 +132,6 @@ class RecipeData:
             "phases": [],
         }
 
-        # Use this for now, until we calibrate the LGHC COB and make an
-        # LED peripheral setup with the spectrum mappings for it.
-        PFC_sun_spectrum = {
-            "380-399": 2.03, 
-            "400-499": 20.3,
-            "500-599": 23.27, 
-            "600-700": 31.09, 
-            "701-780": 23.31
-        }
-
         # Iterate the weather data:
         logging.info(f'YYYY-MM-DD_HH:MM Temp   RH     PAR ')
         last_date = ''
@@ -181,12 +171,35 @@ class RecipeData:
             temp = w['air_temp_degrees_C']
             RH = w['air_RH_percent']
             PAR = w['light_PAR_uE_m2_s']
+            light_bands = []
+            light_band_names = ["light_band1_w_m2",
+                                "light_band2_w_m2",
+                                "light_band3_w_m2",
+                                "light_band4_w_m2",
+                                "light_band5_w_m2",
+                                "light_band6_w_m2",
+                                "light_band7_w_m2"]
+
+            for band_name in light_band_names:
+                light_bands.append(w[band_name])
+
+            # convert actual measurements into a 'composition' summing to 100%
+            total_light_val = sum(light_bands)
+            light_bands_pct = list(map(lambda x: (x / total_light_val) * 100.0, light_bands))
+
+            arable_spectrum = {"440-510": light_bands_pct[0],
+                               "515-555": light_bands_pct[1],
+                               "565-595": light_bands_pct[2],
+                               "620-690": light_bands_pct[3],
+                               "691-740": light_bands_pct[4],
+                               "780-900": light_bands_pct[5],
+                               "930-960": light_bands_pct[6]}
             logging.info(f'{name} {temp:4.2f} {RH:6.2f} {PAR:7.2f}')
 
             # Add a named environment 
             template_recipe_dict["environments"][name] = {
                 "name": name,
-                "light_spectrum_nm_percent": PFC_sun_spectrum,
+                "light_spectrum_nm_percent": arable_spectrum,
                 "light_ppfd_umol_m2_s": PAR, 
                 "light_illumination_distance_cm": light_distance_cm, 
                 "air_temperature_celsius": temp,
