@@ -1,5 +1,5 @@
 # All common database code.
-
+import json
 from datetime import datetime as dt
 
 from cloud_common.cc import utils
@@ -75,7 +75,7 @@ def get_all_historical_values(device_uuid, start_timestamp, end_timestamp):
     if 0 < len(query_result):
         for result in query_result:
             ts_str = str(utils.bytes_to_string(result["submitted_at"]))
-            ts_str = ts_str.split('.')[0]
+            ts_str = ts_str.split(".")[0]
             try:
                 ts = dt.strptime(ts_str, "%Y-%m-%dT%H:%M:%SZ")
                 if start is not None and end is not None and (ts < start or ts > end):
@@ -174,6 +174,27 @@ def get_current_float_value_from_DS(key, device_uuid):
 
 
 # ------------------------------------------------------------------------------
+# Generic function to return a dict value from DeviceData[key]
+def get_current_json_value_from_DS(key, device_uuid):
+    result = {}
+    if device_uuid is None or device_uuid is "None":
+        return json.dumps(result)
+
+    vals = datastore.get_device_data(key, device_uuid, count=1)
+    if 0 == len(vals):
+        return json.dumps(result)
+
+    # process the vars list from the DS into the same format as BQ
+    try:
+      val = vals[0]  # the first item in the list is most recent
+      result = json.loads(val["value"].replace("\'", "\""))
+      return json.dumps(result)
+    except:
+      return json.dumps(result)
+    
+
+
+# ------------------------------------------------------------------------------
 # Get the current CO2 value for this device.
 # Returns a float or None.
 def get_current_CO2_value(device_uuid):
@@ -205,3 +226,12 @@ def get_current_pH_value(device_uuid):
 def get_current_h2o_temp_value(device_uuid):
     return get_current_float_value_from_DS(datastore.DS_h20_temp_KEY, device_uuid)
 
+
+def get_current_light_intensity_value(device_uuid):
+    return get_current_float_value_from_DS(
+        datastore.DS_light_intensity_KEY, device_uuid
+    )
+
+
+def get_current_light_spectrum_value(device_uuid):
+    return get_current_json_value_from_DS(datastore.DS_light_spectrum_KEY, device_uuid)
