@@ -186,12 +186,11 @@ def get_current_json_value_from_DS(key, device_uuid):
 
     # process the vars list from the DS into the same format as BQ
     try:
-      val = vals[0]  # the first item in the list is most recent
-      result = json.loads(val["value"].replace("\'", "\""))
-      return json.dumps(result)
+        val = vals[0]  # the first item in the list is most recent
+        result = json.loads(val["value"].replace("'", '"'))
+        return json.dumps(result)
     except:
-      return json.dumps(result)
-    
+        return json.dumps(result)
 
 
 # ------------------------------------------------------------------------------
@@ -235,3 +234,11 @@ def get_current_light_intensity_value(device_uuid):
 
 def get_current_light_spectrum_value(device_uuid):
     return get_current_json_value_from_DS(datastore.DS_light_spectrum_KEY, device_uuid)
+
+
+def get_current_plant_height_value(device_uuid):
+    return get_current_float_value_from_DS(datastore.DS_plant_height_KEY, device_uuid)
+
+
+def get_current_leaf_count_value(device_uuid):
+    return get_current_float_value_from_DS(datastore.DS_leaf_count_KEY, device_uuid)
