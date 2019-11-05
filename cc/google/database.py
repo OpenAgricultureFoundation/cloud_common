@@ -241,7 +241,7 @@ def get_current_horticulture_log(device_uuid):
     query.add_filter("device_uuid", "=", device_uuid)
     query_result = list(query.fetch())
     if len(query_result) == 0:
-        return {leaf_count: None, plant_height: None}
+        return {"leaf_count": None, "plant_height": None}
     plant_height = None
     leaf_count = None
     for result in query_result:
