@@ -237,21 +237,31 @@ def get_current_light_spectrum_value(device_uuid):
 
 
 def get_current_horticulture_log(device_uuid):
+    # Initialize variables
+    plant_height = None
+    leaf_count = None
+    submitted_at = None
+
+    # Query datastore
     query = datastore.get_client().query(kind="DailyHorticultureLog")
     query.add_filter("device_uuid", "=", device_uuid)
     query_result = list(query.fetch())
+
+    # Validate results
     if len(query_result) == 0:
-        return {"leaf_count": None, "plant_height": None}
-    plant_height = None
-    leaf_count = None
+        return {"leaf_count": None, "plant_height": None, "submitted_at": None}
+    
+    # Parse results
     for result in query_result:
         if not plant_height and "plant_height" in result:
             plant_height = result["plant_height"]
         if not leaf_count and "leaf_count" in result:
             leaf_count = result["leaf_count"]
-        if plant_height and leaf_count:
+        if not submitted_at and "submitted_at" in result:
+            submitted_at = result["submitted_at"] 
+        if plant_height and leaf_count and submitted_at:
             break
-    return {"plant_height": plant_height, "leaf_count": leaf_count}
+    return {"plant_height": plant_height, "leaf_count": leaf_count, "submitted_at": submitted_at}
 
 
 def get_current_plant_height_value(device_uuid):
