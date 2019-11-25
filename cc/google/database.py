@@ -17,6 +17,7 @@ def get_all_historical_values(device_uuid, start_timestamp, end_timestamp):
     RH = []
     leaf_count = []
     plant_height = []
+    horticulture_notes = []
 
     if device_uuid is None or device_uuid is "None":
         print(f"get_all_historical_values: No device_uuid")
@@ -80,13 +81,18 @@ def get_all_historical_values(device_uuid, start_timestamp, end_timestamp):
                 ts = dt.strptime(ts_str, "%Y-%m-%dT%H:%M:%SZ")
                 if start is not None and end is not None and (ts < start or ts > end):
                     continue  # this value is not in our start / end range
-                leaf_count.append({"time": ts_str, "value": result["leaf_count"]})
-                plant_height.append({"time": ts_str, "value": result["plant_height"]})
+                if "leaf_count" in result:
+                    leaf_count.append({"time": ts_str, "value": result["leaf_count"]})
+                if "plant_height" in result:
+                    plant_height.append({"time": ts_str, "value": result["plant_height"]})
+                if "horticulture_notes" in result:
+                    horticulture_notes.append({"time": ts_str, "value": result["horticulture_notes"]})
+
             except:
                 print("Invalid string format:", ts_str)
                 continue
 
-    return temp, RH, co2, leaf_count, plant_height
+    return temp, RH, co2, leaf_count, plant_height, horticulture_notes
 
 
 # ------------------------------------------------------------------------------
