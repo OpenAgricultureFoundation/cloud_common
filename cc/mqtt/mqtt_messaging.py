@@ -17,6 +17,7 @@ from cloud_common.cc.google import storage
 from cloud_common.cc.google import datastore 
 from cloud_common.cc.google import bigquery 
 from cloud_common.cc.notifications.notification_messaging import NotificationMessaging
+from cloud_common.cc.notifications.runs import Runs
 from cloud_common.cc.mqtt.deprecated_image_chunking import DeprecatedImageChunking
 
 class MQTTMessaging:
@@ -56,6 +57,7 @@ class MQTTMessaging:
     #--------------------------------------------------------------------------
     def __init__(self) -> None:
         self.notification_messaging = NotificationMessaging()
+        self.runs = Runs()
 
 
     #--------------------------------------------------------------------------
@@ -83,18 +85,23 @@ class MQTTMessaging:
         if self.messageType_RecipeEvent == self.get_message_type(message):
             action = message.get(self.recipeAction_KEY)
             message_type = None
+            name = message.get(self.recipeName_KEY)
             if action == 'start':
                 message_type = NotificationMessaging.recipe_start
+                self.runs.start(device_ID,name)
             elif action == 'stop':
                 message_type = NotificationMessaging.recipe_stop
+                self.runs.stop(device_ID)
             elif action == 'end':
                 message_type = NotificationMessaging.recipe_end
+                self.runs.stop(device_ID)
             if message_type is None:
                 logging.error(f'{self.name}.parse: invalid recipe event '
                         f'action={action}')
                 return
-            name = message.get(self.recipeName_KEY)
-            self.notification_messaging.publish(device_ID, message_type, name)
+            # TODO: Re-enable this when notifications get turned back on (After removing saving of the
+            #   runs() data from the notification service.
+            # self.notification_messaging.publish(device_ID, message_type, name)
             return
 
         # Save the most recent data as properties on the Device entity in the
