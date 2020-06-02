@@ -60,15 +60,15 @@ class MQTTMessaging:
     DS_images_KEY = 'Images'
 
     # For logging
-    name = 'cloud_common.cc.mqtt.mqtt_messaging'
+    name = 'cloud_common.cc.mqtt.local_mqtt_messaging'
 
 
     #--------------------------------------------------------------------------
-    def __init__(self) -> None:
+    def __init__(self, host='influxdb', port=8086, db_name='openag_local') -> None:
         # self.notification_messaging = NotificationMessaging()
         # self.runs = Runs()
-        self.influx = InfluxDBClient("brains.local", port=8086)
-        self.influxdb_name = "openag_local"
+        self.influx = InfluxDBClient(host=host, port=port)
+        self.influxdb_name = db_name
         self.influx.switch_database(self.influxdb_name)
 
 
