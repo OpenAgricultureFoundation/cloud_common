@@ -345,6 +345,36 @@ class MQTTMessaging:
             return name
         return ''
 
+    def save_uploaded_image(self, pydict, deviceId):
+         try:
+             if self.messageType_ImageUpload != self.get_message_type(pydict):
+                 logging.error("save_uploaded_image: invalid message type")
+                 return
+
+             # each received image message must have these fields
+             if not utils.key_in_dict(pydict, self.varName_KEY) or \
+             not utils.key_in_dict(pydict, self.fileName_KEY ):
+                 logging.error('save_uploaded_image: missing key(s) in dict.')
+                 return
+
+             var_name =  pydict.get(self.varName_KEY)
+             file_name = pydict.get(self.fileName_KEY)
+
+             # var_name is bad (problem in brain code), so we'll parse the fileName
+             # EDU-6B1261EF-b8-27-eb-7f-f2-73_2020-06-05_T19-42-52Z_Camera-Top.png
+             fileDeviceId, imageDate, imageTime, sensorName = file_name.split("_")
+             sensorName = sensorName.split(".")[0]
+             measurement_type = "images"
+             influx_tags = {"device_id": deviceId, "sensor": str(sensorName)}
+
+             valueToSave = {
+                 "measurement": measurement_type,
+                 "time": str("{}T{}".format(imageDate, imageTime) ),
+                 "tags": influx_tags,
+                 "fields": {"filename": file_name}
+             }
+
+
 
     # Temporarilly disable handing of images
     #--------------------------------------------------------------------------
