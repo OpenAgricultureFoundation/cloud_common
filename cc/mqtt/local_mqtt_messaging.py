@@ -367,8 +367,8 @@ class MQTTMessaging:
                  "tags": influx_tags,
                  "fields": {"filename": file_name}
              }
-              logging.debug(valueToSave)
-              self.influx.write_points([valueToSave])
+             logging.debug(valueToSave)
+             self.influx.write_points([valueToSave])
 
          except Exception as e:
             logging.critical(f"Exception in save_uploaded_image(): {e}")
