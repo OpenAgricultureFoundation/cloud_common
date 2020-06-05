@@ -363,7 +363,7 @@ class MQTTMessaging:
 
              valueToSave = {
                  "measurement": measurement_type,
-                 "time": str("{}T{}".format(imageDate, imageTime.replace("-",":") ),
+                 "time": str("{}T{}".format(imageDate, imageTime.replace("-",":"))),
                  "tags": influx_tags,
                  "fields": {"filename": file_name}
              }
